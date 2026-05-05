@@ -28,7 +28,6 @@ import datetime
 import math
 import os
 import random
-import re
 import sys
 import time
 
@@ -50,59 +49,11 @@ SYMBOL = {EMPTY: '.', X: 'X', O: 'O'}
 
 MAX_DEPTH  = 20
 TIME_LIMIT = 3.0   # budget par coup
+QUIESCENCE_MAX = 2
 
 # Log optionnel des coups dans game_log.txt.
 TEST = True
 TEST_LOG_FILE = "game_log.txt"
-
-# ---------------------------------------------------------------------------
-# Zobrist hashing + Transposition Table
-# ---------------------------------------------------------------------------
-
-random.seed(42)
-# Table de valeurs aleatoires : ZOBRIST[joueur][row][col].
-ZOBRIST = [[[random.getrandbits(64) for _ in range(9)] for _ in range(9)] for _ in range(3)]
-# Hash supplementaire pour le morpion impose au prochain joueur.
-# Index 0..8 = morpion force, 9 = coup libre.
-NEXT_MACRO_ZOBRIST = [random.getrandbits(64) for _ in range(10)]
-
-# Flags pour les entrees de la table de transposition.
-TT_EXACT = 0   # score exact
-TT_LOWER = 1   # borne inferieure (alpha)
-TT_UPPER = 2   # borne superieure (beta)
-
-# Transposition table : hash -> (depth, score, flag, best_move)
-_tt: dict = {}
-TT_MAX_SIZE = 1_000_000
-
-
-def board_hash(board):
-    """Calcule le hash Zobrist d'un plateau."""
-    h = 0
-    for r in range(9):
-        for c in range(9):
-            v = board[r][c]
-            if v != EMPTY:
-                h ^= ZOBRIST[v][r][c]
-    return h
-
-
-def _next_macro_hash(next_macro):
-    """Hash de la contrainte de prochain morpion."""
-    if next_macro is None:
-        return NEXT_MACRO_ZOBRIST[9]
-    mr, mc = next_macro
-    return NEXT_MACRO_ZOBRIST[mr * 3 + mc]
-
-
-def tt_key(board_h, next_macro):
-    """Cle TT complete : plateau + morpion force."""
-    return board_h ^ _next_macro_hash(next_macro)
-
-
-def tt_clear():
-    _tt.clear()
-
 
 # ---------------------------------------------------------------------------
 # Representation du plateau
@@ -156,6 +107,73 @@ def check_winner_3x3(cells):
     return EMPTY
 
 
+def compute_macro(board):
+    """Calcule l'etat 3x3 des morpions locaux."""
+    macro = [[EMPTY] * 3 for _ in range(3)]
+    for mr in range(3):
+        for mc in range(3):
+            cells = [[board[mr*3+r][mc*3+c] for c in range(3)] for r in range(3)]
+            macro[mr][mc] = check_winner_3x3(cells)
+    return macro
+
+
+def is_local_full(board, mr, mc):
+    """Vrai si le morpion local (mr, mc) est completement rempli."""
+    for r in range(3):
+        for c in range(3):
+            if board[mr*3+r][mc*3+c] == EMPTY:
+                return False
+    return True
+
+
+def is_local_available(board, macro, mr, mc):
+    """Vrai si le morpion local est jouable."""
+    return macro[mr][mc] == EMPTY and not is_local_full(board, mr, mc)
+
+
+def get_valid_moves(board, next_macro, macro=None):
+    """Retourne les coups valides (row, col) en index 0-base."""
+    if macro is None:
+        macro = compute_macro(board)
+
+    moves = []
+
+    def add_moves_for(mr, mc):
+        """Cette fonction sert a ajouter les coups libres d'un morpion local."""
+        if not is_local_available(board, macro, mr, mc):
+            return
+        for r in range(3):
+            for c in range(3):
+                if board[mr*3+r][mc*3+c] == EMPTY:
+                    moves.append((mr*3+r, mc*3+c))
+
+    if next_macro is not None:
+        mr, mc = next_macro
+        if is_local_available(board, macro, mr, mc):
+            add_moves_for(mr, mc)
+            return moves
+
+    for mr in range(3):
+        for mc in range(3):
+            add_moves_for(mr, mc)
+    return moves
+
+
+def apply_move(board, row, col, player):
+    """Retourne un nouveau plateau apres le coup."""
+    new_board = [r[:] for r in board]
+    new_board[row][col] = player
+    return new_board
+
+
+def next_macro_constraint(row, col, board, macro):
+    """Retourne le prochain morpion impose, ou None si le coup suivant est libre."""
+    lr, lc = get_local_pos(row, col)
+    if is_local_available(board, macro, lr, lc):
+        return (lr, lc)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Zobrist hashing
 # ---------------------------------------------------------------------------
@@ -189,10 +207,6 @@ _tt: dict = {}
 TT_MAX_SIZE = 2_000_000
 
 
-def tt_lookup(h):
-    return _tt.get(h)
-
-
 def tt_store(h, depth, score, flag, best_move):
     """Stocke une entree avec strategie de remplacement par profondeur."""
     existing = _tt.get(h)
@@ -206,6 +220,7 @@ def tt_store(h, depth, score, flag, best_move):
 
 
 def tt_clear():
+    """Cette fonction sert a vider la table de transposition."""
     _tt.clear()
 
 
@@ -232,6 +247,7 @@ class GameState:
                  "history")
 
     def __init__(self, board=None, side=X, next_macro=None):
+        """Cette fonction sert a initialiser un etat de jeu mutable."""
         if board is None:
             self.board = [[EMPTY] * 9 for _ in range(9)]
         else:
@@ -269,9 +285,11 @@ class GameState:
         self.hash = h
 
     def is_local_full(self, mr, mc):
+        """Cette fonction sert a savoir si un morpion local est plein."""
         return self.occ[mr][mc] >= 9
 
     def is_local_available(self, mr, mc):
+        """Cette fonction sert a savoir si un morpion local est encore jouable."""
         return self.macro[mr][mc] == EMPTY and self.occ[mr][mc] < 9
 
     def _check_local_winner(self, mr, mc):
@@ -433,7 +451,7 @@ W_MOBILITY      = 4    # par coup en plus pour le joueur a jouer (faible mais ut
 W_BAD_SEND      = -150 # envoyer dans morpion ouvrant lignes adverses
 
 
-def _score_local_3x3(board, mr, mc, player, opp):
+def _score_local_3x3(board, mr, mc, player, opp):       
     """Score local d'un morpion non termine, pour le perspective de player."""
     r0, c0 = mr*3, mc*3
     score = 0
@@ -499,7 +517,7 @@ def _macro_threats(macro, player, opp):
     return n_two_me, n_two_opp, line_score
 
 
-def evaluate(state, ai_player):
+def _state_evaluate(state, ai_player):
     """
     Evalue l'etat pour ai_player. Score normalise (positif = favorable).
     """
@@ -579,6 +597,7 @@ _history = [[[0]*9 for _ in range(9)] for _ in range(3)]
 
 
 def _add_killer(depth, move):
+    """Cette fonction sert a memoriser un coup qui coupe souvent la recherche."""
     lst = _killers.setdefault(depth, [])
     if move not in lst:
         lst.insert(0, move)
@@ -587,15 +606,18 @@ def _add_killer(depth, move):
 
 
 def _add_history(player, move, depth):
+    """Cette fonction sert a renforcer les coups efficaces dans l'historique."""
     r, c = move
     _history[player][r][c] += depth * depth  # bonus quadratique en depth
 
 
 def killers_clear():
+    """Cette fonction sert a vider la liste des killer moves."""
     _killers.clear()
 
 
 def history_clear():
+    """Cette fonction sert a reinitialiser l'heuristique d'historique."""
     for p in range(3):
         for r in range(9):
             for c in range(9):
@@ -716,6 +738,7 @@ def _move_score(state, move, player, tt_move, killers):
 
 
 def _order_moves(state, moves, player, tt_move, depth):
+    """Cette fonction sert a trier les coups du plus prometteur au moins prometteur."""
     killers = _killers.get(depth, [])
     moves.sort(key=lambda m: _move_score(state, m, player, tt_move, killers),
                reverse=True)
@@ -763,7 +786,7 @@ def quiescence(state, alpha, beta, ai_player, qdepth):
             return 0
         return -100_000
 
-    stand_pat = evaluate(state, ai_player)
+    stand_pat = _state_evaluate(state, ai_player)
     if qdepth <= 0:
         return stand_pat
 
@@ -820,7 +843,7 @@ def quiescence(state, alpha, beta, ai_player, qdepth):
 # Minimax + Alpha-Beta
 # ---------------------------------------------------------------------------
 
-def minimax(state, depth, alpha, beta, ai_player):
+def _state_minimax(state, depth, alpha, beta, ai_player):
     """
     Minimax avec alpha-beta sur l'etat mutable (make/unmake).
     Retourne le score pour ai_player.
@@ -856,7 +879,7 @@ def minimax(state, depth, alpha, beta, ai_player):
 
     moves = state.get_valid_moves()
     if not moves:
-        return evaluate(state, ai_player)
+        return _state_evaluate(state, ai_player)
 
     side = state.side
     maximizing = (side == ai_player)
@@ -871,7 +894,7 @@ def minimax(state, depth, alpha, beta, ai_player):
         best = -math.inf
         for move in moves:
             state.make_move(*move)
-            val = minimax(state, depth - 1, alpha, beta, ai_player)
+            val = _state_minimax(state, depth - 1, alpha, beta, ai_player)
             state.unmake_move()
             if val > best:
                 best = val
@@ -886,7 +909,7 @@ def minimax(state, depth, alpha, beta, ai_player):
         best = math.inf
         for move in moves:
             state.make_move(*move)
-            val = minimax(state, depth - 1, alpha, beta, ai_player)
+            val = _state_minimax(state, depth - 1, alpha, beta, ai_player)
             state.unmake_move()
             if val < best:
                 best = val
@@ -914,7 +937,7 @@ def minimax(state, depth, alpha, beta, ai_player):
 # Forced move detection
 # ---------------------------------------------------------------------------
 
-def _forced_move(state, player):
+def _state_forced_move(state, player):
     """
     Detection de coups forces avant minimax :
     1. Coup gagnant la macro immediatement (priorite max).
@@ -1008,7 +1031,7 @@ def _root_search(state, depth, ai_player):
 
     for move in moves:
         state.make_move(*move)
-        val = minimax(state, depth - 1, alpha, beta, ai_player)
+        val = _state_minimax(state, depth - 1, alpha, beta, ai_player)
         state.unmake_move()
         if val > best_val:
             best_val = val
@@ -1035,7 +1058,7 @@ def ai_choose_move_timed(board, next_macro, ai_player, time_limit=TIME_LIMIT):
         return moves[0]
 
     # Coup force (victoire/blocage macro immediat) : pas besoin de chercher
-    forced = _forced_move(state, ai_player)
+    forced = _state_forced_move(state, ai_player)
     if forced is not None:
         return forced
 
@@ -1067,6 +1090,7 @@ def ai_choose_move_timed(board, next_macro, ai_player, time_limit=TIME_LIMIT):
 # ---------------------------------------------------------------------------
 
 def _cell_str(board, macro, row, col, last_move):
+    """Cette fonction sert a formater une case pour l'affichage console."""
     mr, mc = row // 3, col // 3
     cell = board[row][col]
     w = macro[mr][mc]
@@ -1175,8 +1199,25 @@ def _score_line(a, b, c, player):
     return 0
 
 
-def get_macro_pos(row, col):
-    return row // 3, col // 3
+def _score_3x3(cells, player):
+    """Evalue une grille 3x3 pour player."""
+    score = 0
+    for line in LINES_3x3:
+        vals = [cells[r][c] for r, c in line]
+        score += _score_line(vals[0], vals[1], vals[2], player)
+
+    center = cells[1][1]
+    if center == player:
+        score += 10
+    elif center != EMPTY:
+        score -= 10
+
+    for r, c in [(0,0),(0,2),(2,0),(2,2)]:
+        if cells[r][c] == player:
+            score += 3
+        elif cells[r][c] != EMPTY:
+            score -= 3
+    return score
 
 
 def _local_winning_moves(cells, player):
@@ -1346,6 +1387,7 @@ def _compact_check_win(cells):
 
 
 def _compact_line_has_sum(cells, target):
+    """Cette fonction sert a detecter rapidement une ligne ayant une somme donnee."""
     return (
         cells[0] + cells[1] + cells[2] == target or
         cells[3] + cells[4] + cells[5] == target or
@@ -1359,6 +1401,7 @@ def _compact_line_has_sum(cells, target):
 
 
 def _compact_has_blocked_pair(cells, a):
+    """Cette fonction sert a detecter une paire bloquee dans une grille compacte."""
     triples = (
         (0, 1, 2), (3, 4, 5), (6, 7, 8),
         (0, 3, 6), (1, 4, 7), (2, 5, 8),
@@ -1423,6 +1466,7 @@ def _compact_cells_from_local(board, mr, mc, player):
 
 
 def _next_macro_index(next_macro):
+    """Cette fonction sert a convertir la contrainte macro en index compact."""
     if next_macro is None:
         return -1
     mr, mc = next_macro
@@ -1539,36 +1583,24 @@ def evaluate(board, player, macro=None, next_macro=None, current_player=None):
     return score
 
 
-def is_local_full(board, mr, mc):
-    for r in range(3):
-        for c in range(3):
-            if board[mr*3+r][mc*3+c] == EMPTY:
-                return False
-    return True
+def score_to_win_percent(score):
+    """Cette fonction sert a transformer un score heuristique en chance de victoire approximative."""
+    if score >= 100_000:
+        return 99
+    if score <= -100_000:
+        return 1
+    return round(50 + 49 * math.tanh(score / 12_000))
+
+
+def format_win_estimate(label, score):
+    """Cette fonction sert a afficher une estimation win/loose a partir du score."""
+    win = score_to_win_percent(score)
+    loose = 100 - win
+    return f"{label} a environ {win}% de win / {loose}% de loose"
 
 
 # ---------------------------------------------------------------------------
-# Killer Moves
-# ---------------------------------------------------------------------------
-
-# _killers[depth] = 2 coups qui ont deja cause une coupure beta a cette profondeur.
-_killers: dict = {}
-
-
-def _add_killer(depth, move):
-    lst = _killers.setdefault(depth, [])
-    if move not in lst:
-        lst.insert(0, move)
-        if len(lst) > 2:
-            lst.pop()
-
-
-def killers_clear():
-    _killers.clear()
-
-
-# ---------------------------------------------------------------------------
-# Minimax avec elagage Alpha-Beta
+# Priorite des coups pour les vues et analyses compatibles avec l'ancienne API
 # ---------------------------------------------------------------------------
 
 def _macro_threat(macro, pos, player):
@@ -1694,224 +1726,8 @@ def _move_priority(move, board=None, player=None, macro=None):
     return p
 
 
-def minimax(board, depth, alpha, beta, maximizing, ai_player, next_macro, macro=None, h=None):
-    """
-    Minimax avec elagage Alpha-Beta + Transposition Table + Killer Moves.
-    ai_player : joueur que l'on cherche a maximiser.
-    maximizing : True si c'est au tour de ai_player.
-    h : hash Zobrist courant du plateau.
-    """
-    if time.time() >= _deadline:
-        raise _Timeout()
-
-    if macro is None:
-        macro = compute_macro(board)
-    moves = []
-
-    # --- Consultation TT ---
-    key = tt_key(h, next_macro)
-    tt_entry = _tt.get(key)
-    if tt_entry is not None:
-        tt_depth, tt_score, tt_flag, _ = tt_entry
-        if tt_depth >= depth:
-            if tt_flag == TT_EXACT:
-                return tt_score
-            if tt_flag == TT_LOWER and tt_score >= beta:
-                return tt_score
-            if tt_flag == TT_UPPER and tt_score <= alpha:
-                return tt_score
-
-    done, winner = check_game_result(board, macro)
-    if done:
-        if winner == ai_player:
-            return 100_000 + depth
-        elif winner == 0:
-            return 0
-        else:
-            return -100_000 - depth
-
-    opp = O if ai_player == X else X
-    current = ai_player if maximizing else opp
-
-    if depth == 0:
-        return evaluate(board, ai_player, macro, next_macro, current)
-
-    moves = get_valid_moves(board, next_macro, macro)
-    if not moves:
-        return evaluate(board, ai_player, macro, next_macro, current)
-
-    # Killer moves en tete si presents dans la liste.
-    killers = _killers.get(depth, [])
-    moves.sort(key=lambda m: (
-        0 if m in killers else 1,
-        _move_priority(m, board, current, macro)
-    ))
-
-    orig_alpha = alpha
-    orig_beta  = beta
-    best_move  = moves[0]
-
-    if maximizing:
-        best = -math.inf
-        for row, col in moves:
-            nh = h ^ ZOBRIST[current][row][col]
-            nb = apply_move(board, row, col, current)
-            nm = compute_macro(nb)
-            nn = next_macro_constraint(row, col, nb, nm)
-            val = minimax(nb, depth-1, alpha, beta, False, ai_player, nn, nm, nh)
-            if val > best:
-                best = val
-                best_move = (row, col)
-            alpha = max(alpha, val)
-            if beta <= alpha:
-                _add_killer(depth, (row, col))
-                break
-    else:
-        best = math.inf
-        for row, col in moves:
-            nh = h ^ ZOBRIST[current][row][col]
-            nb = apply_move(board, row, col, current)
-            nm = compute_macro(nb)
-            nn = next_macro_constraint(row, col, nb, nm)
-            val = minimax(nb, depth-1, alpha, beta, True, ai_player, nn, nm, nh)
-            if val < best:
-                best = val
-                best_move = (row, col)
-            beta = min(beta, val)
-            if beta <= alpha:
-                _add_killer(depth, (row, col))
-                break
-
-    # --- Ecriture TT ---
-    if len(_tt) < TT_MAX_SIZE:
-        if best <= orig_alpha:
-            flag = TT_UPPER
-        elif best >= orig_beta:
-            flag = TT_LOWER
-        else:
-            flag = TT_EXACT
-        _tt[key] = (depth, best, flag, best_move)
-
-    return best
-
-
-def _opponent_has_immediate_macro_win(board, macro, next_macro, opponent):
-    """Vrai si opponent peut gagner la partie au prochain coup."""
-    moves = get_valid_moves(board, next_macro, macro)
-    for row, col in moves:
-        mr, mc = get_macro_pos(row, col)
-        lr, lc = get_local_pos(row, col)
-        cells = [[board[mr*3+i][mc*3+j] for j in range(3)] for i in range(3)]
-        cells[lr][lc] = opponent
-        if check_winner_3x3(cells) != opponent:
-            continue
-
-        sim_macro = [r[:] for r in macro]
-        sim_macro[mr][mc] = opponent
-        if check_winner_3x3(sim_macro) == opponent:
-            return True
-    return False
-
-
-def _gives_opponent_immediate_macro_win(row, col, board, macro, player):
-    """Vrai si jouer ce coup donne une victoire macro immediate a l'adversaire."""
-    opp = O if player == X else X
-    nb = apply_move(board, row, col, player)
-    nm = compute_macro(nb)
-    nn = next_macro_constraint(row, col, nb, nm)
-    return _opponent_has_immediate_macro_win(nb, nm, nn, opp)
-
-
-def _forced_move(moves, board, macro, player):
-    """
-    Retourne immediatement un coup force sans lancer minimax :
-    1. Coup qui gagne la partie macro (victoire immediate).
-    2. Coup qui bloque la victoire macro adverse au coup suivant (2-en-ligne).
-    3. Coup qui gagne un morpion coupant une ligne naissante adverse (1-en-ligne)
-       sur une case strategique (centre ou coin macro), uniquement si libre.
-    Retourne None si aucun coup force trouve.
-    """
-    opp = O if player == X else X
-    block_2 = None   # (risk, move) pour bloquer 2-en-ligne adverse
-
-    for row, col in moves:
-        mr, mc = get_macro_pos(row, col)
-        lr, lc = get_local_pos(row, col)
-        cells = [[board[mr*3+i][mc*3+j] for j in range(3)] for i in range(3)]
-
-        # Simuler la victoire du morpion local
-        cells[lr][lc] = player
-        if check_winner_3x3(cells) != player:
-            continue  # ce coup ne gagne pas le morpion local
-
-        # Ce coup gagne le morpion local : verifier l'impact macro
-        sim_macro = [r[:] for r in macro]
-        sim_macro[mr][mc] = player
-        if check_winner_3x3(sim_macro) == player:
-            return (row, col)   # victoire macro immediate !
-
-        if _gives_opponent_immediate_macro_win(row, col, board, macro, player):
-            continue
-
-        nb = apply_move(board, row, col, player)
-        nm = compute_macro(nb)
-        nn = next_macro_constraint(row, col, nb, nm)
-        reply_risk = _reply_tactical_risk(nb, nm, nn, player)
-
-        for line in LINES_3x3:
-            if (mr, mc) not in line:
-                continue
-            vals = [macro[a][b] for a, b in line]
-            # Bloquer 2-en-ligne adverse
-            if vals.count(opp) == 2 and vals.count(EMPTY) == 1:
-                candidate = (reply_risk, (row, col))
-                if block_2 is None or candidate < block_2:
-                    block_2 = candidate
-
-    if block_2 is not None:
-        return block_2[1]
-    return None
-
-
-def ai_choose_move(board, next_macro, ai_player, depth=6):
-    """Retourne le meilleur coup (row, col) pour l'IA."""
-    macro = compute_macro(board)
-    moves = get_valid_moves(board, next_macro, macro)
-
-    if not moves:
-        return None
-
-    # Coups forces (victoire/blocage macro) : pas besoin de minimax
-    forced = _forced_move(moves, board, macro, ai_player)
-    if forced is not None:
-        return forced
-
-    moves.sort(key=lambda m: _move_priority(m, board, ai_player, macro))
-
-    h = board_hash(board)
-    best_val  = -math.inf
-    best_move = moves[0]
-
-    # Si la TT propose un bon coup, on le teste en premier.
-    tt_entry = _tt.get(tt_key(h, next_macro))
-    if tt_entry and tt_entry[3] in moves:
-        moves.remove(tt_entry[3])
-        moves.insert(0, tt_entry[3])
-
-    for row, col in moves:
-        nh = h ^ ZOBRIST[ai_player][row][col]
-        nb = apply_move(board, row, col, ai_player)
-        nm = compute_macro(nb)
-        nn = next_macro_constraint(row, col, nb, nm)
-        val = minimax(nb, depth-1, -math.inf, math.inf, False, ai_player, nn, nm, nh)
-        if val > best_val:
-            best_val  = val
-            best_move = (row, col)
-
-    return best_move
-
-
 def check_game_result(board, macro=None):
+    """Cette fonction sert a savoir si la partie est terminee et qui gagne."""
     if macro is None:
         macro = compute_macro(board)
     w = check_winner_3x3(macro)
@@ -1930,17 +1746,12 @@ def check_game_result(board, macro=None):
     return True, 0
 
 
-def evaluate_legacy(board, player, macro=None):
-    """Wrapper pour compatibilite avec les logs (juste un score d'apercu)."""
-    state = GameState(board=board, side=player)
-    return evaluate(state, player)
-
-
 # ---------------------------------------------------------------------------
 # Ecran de resultats
 # ---------------------------------------------------------------------------
 
 def show_result(board, winner, human, ai):
+    """Cette fonction sert a afficher l'ecran final de la partie."""
     os.system('cls' if os.name == 'nt' else 'clear')
     macro = compute_macro(board)
 
@@ -1984,6 +1795,7 @@ def show_result(board, winner, human, ai):
 # ---------------------------------------------------------------------------
 
 def human_turn(board, next_macro, player):
+    """Cette fonction sert a lire et valider le coup du joueur humain."""
     macro = compute_macro(board)
     while True:
         try:
@@ -2021,6 +1833,7 @@ def human_turn(board, next_macro, player):
 # ---------------------------------------------------------------------------
 
 def log_event(msg):
+    """Cette fonction sert a ecrire un message dans le fichier de log."""
     if not TEST:
         return
     with open(TEST_LOG_FILE, 'a', encoding='utf-8') as f:
@@ -2032,6 +1845,7 @@ def log_event(msg):
 # ---------------------------------------------------------------------------
 
 def play_game():
+    """Cette fonction sert a lancer une partie joueur contre IA."""
     print()
     print("=" * 56)
     print("    ULTIMATE TIC-TAC-TOE  --  IA Minimax + Alpha-Beta")
@@ -2087,6 +1901,8 @@ def play_game():
 
         if current == human:
             print(f"  Votre tour ({SYMBOL[human]})")
+            ai_score = evaluate(board, ai, macro, next_macro, human)
+            print(f"  {format_win_estimate('L IA', ai_score)}")
             row, col = human_turn(board, next_macro, human)
             print(f"  >> Joueur joue en (col {col+1}, ligne {row+1})")
             log_event(f"Coup {move_num:>3} | JOUEUR ({SYMBOL[human]}) | col {col+1}, ligne {row+1} | contrainte={constraint_str}")
@@ -2105,7 +1921,9 @@ def play_game():
             next_after = next_macro_constraint(row, col, board_after, macro_after)
             score_after = evaluate(board_after, ai, macro_after, next_after, human)
             print(f"  >> IA joue en (col {col+1}, ligne {row+1})  [{elapsed:.2f}s]")
-            log_event(f"Coup {move_num:>3} | IA     ({SYMBOL[ai]}) | col {col+1}, ligne {row+1} | contrainte={constraint_str} | {elapsed:.2f}s | score_avant={score_before:+d} | score_apres={score_after:+d}")
+            estimate = format_win_estimate("IA", score_after)
+            print(f"  >> {estimate}")
+            log_event(f"Coup {move_num:>3} | IA     ({SYMBOL[ai]}) | col {col+1}, ligne {row+1} | contrainte={constraint_str} | {elapsed:.2f}s | score_avant={score_before:+d} | score_apres={score_after:+d} | {estimate}")
 
         board = apply_move(board, row, col, current)
         last_move = (row, col)
@@ -2150,6 +1968,7 @@ def play_game():
 # ---------------------------------------------------------------------------
 
 def ai_vs_ai():
+    """Cette fonction sert a faire jouer deux IA l'une contre l'autre."""
     print()
     print("=" * 40)
     print("   Mode IA vs IA")
@@ -2235,7 +2054,9 @@ def ai_vs_ai():
         print(f"  >> IA-{SYMBOL[current]} joue en (col {col+1}, ligne {row+1})")
         print(f"     Score heuristique avant coup : {score:+d}")
         print(f"     Score heuristique apres coup : {score_after:+d}")
-        log_event(f"Coup {move_count+1:>3} | IA-{SYMBOL[current]} | col {col+1}, ligne {row+1} | contrainte={constraint_str} | {elapsed:.2f}s | score_avant={score:+d} | score_apres={score_after:+d}")
+        estimate = format_win_estimate(f"IA-{SYMBOL[current]}", score_after)
+        print(f"     {estimate}")
+        log_event(f"Coup {move_count+1:>3} | IA-{SYMBOL[current]} | col {col+1}, ligne {row+1} | contrainte={constraint_str} | {elapsed:.2f}s | score_avant={score:+d} | score_apres={score_after:+d} | {estimate}")
 
         board = apply_move(board, row, col, current)
         last_move = (row, col)
@@ -2310,173 +2131,6 @@ def ai_vs_ai():
 
 
 # ---------------------------------------------------------------------------
-# Analyse des logs
-# ---------------------------------------------------------------------------
-
-LOG_MOVE_RE = re.compile(
-    r"Coup\s+(\d+)\s+\|\s+(IA-X|IA-O|IA\s+\([XO]\)|JOUEUR\s+\([XO]\))"
-    r"\s+\|\s+col\s+(\d+), ligne\s+(\d+)"
-)
-LOG_SCORE_RE = re.compile(r"score_avant=([+-]?\d+)\s+\|\s+score_apres=([+-]?\d+)")
-
-
-def _parse_logged_player(label):
-    if "X" in label:
-        return X
-    if "O" in label:
-        return O
-    return EMPTY
-
-
-def _parse_log_games(path=TEST_LOG_FILE):
-    """Parse les parties du log en sequences de coups."""
-    games = []
-    current = None
-    if not os.path.exists(path):
-        return games
-
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if line.startswith("IA VS IA") or line.startswith("PARTIE"):
-                if current and current["moves"]:
-                    games.append(current)
-                current = {"header": line, "moves": []}
-                continue
-            if current is None:
-                continue
-
-            m = LOG_MOVE_RE.search(line)
-            if not m:
-                continue
-
-            move_num = int(m.group(1))
-            player = _parse_logged_player(m.group(2))
-            col = int(m.group(3))
-            row = int(m.group(4))
-            score_match = LOG_SCORE_RE.search(line)
-            score_before = int(score_match.group(1)) if score_match else None
-            score_after = int(score_match.group(2)) if score_match else None
-            current["moves"].append({
-                "num": move_num,
-                "player": player,
-                "row": row - 1,
-                "col": col - 1,
-                "score_before": score_before,
-                "score_after": score_after,
-            })
-
-    if current and current["moves"]:
-        games.append(current)
-    return games
-
-
-def _format_move(move):
-    row, col = move
-    return f"col {col+1}, ligne {row+1}"
-
-
-def _macro_compact(macro):
-    return "/".join("".join(SYMBOL[v] for v in row) for row in macro)
-
-
-def _analyze_alternatives(board, next_macro, player, played_move, limit=5):
-    """Retourne les meilleures alternatives immediates selon evaluate apres coup."""
-    macro = compute_macro(board)
-    opp = O if player == X else X
-    rows = []
-    for move in get_valid_moves(board, next_macro, macro):
-        row, col = move
-        nb = apply_move(board, row, col, player)
-        nm = compute_macro(nb)
-        nn = next_macro_constraint(row, col, nb, nm)
-        after = evaluate(nb, player, nm, nn, opp)
-        risk = _reply_tactical_risk(nb, nm, nn, player)
-        rows.append({
-            "move": move,
-            "played": move == played_move,
-            "score_after": after,
-            "reply_risk": risk,
-            "next_macro": nn,
-            "macro": _macro_compact(nm),
-        })
-    rows.sort(key=lambda x: x["score_after"], reverse=True)
-    return rows[:limit], next((x for x in rows if x["played"]), None)
-
-
-def analyze_game_log(path=TEST_LOG_FILE, drop_threshold=3_000):
-    """
-    Rejoue le log et signale les coups ou score_apres chute fortement.
-    Utile pour verifier si le coup joue etait le moins mauvais ou une erreur.
-    """
-    games = _parse_log_games(path)
-    if not games:
-        print(f"  Aucun log exploitable trouve dans {path}.")
-        return
-
-    print()
-    print("=" * 60)
-    print("  ANALYSE DES COUPS CATASTROPHIQUES")
-    print("=" * 60)
-    print(f"  Seuil de chute : {drop_threshold} points")
-    print()
-
-    total_alerts = 0
-    for game_idx, game in enumerate(games, 1):
-        board = create_board()
-        next_macro = None
-        alerts = []
-
-        for info in game["moves"]:
-            player = info["player"]
-            move = (info["row"], info["col"])
-            macro = compute_macro(board)
-            valid = get_valid_moves(board, next_macro, macro)
-            if move not in valid:
-                print(f"  Partie {game_idx}, coup {info['num']}: coup invalide dans le log, ignore.")
-                continue
-
-            score_before = info["score_before"]
-            score_after = info["score_after"]
-            if score_before is not None and score_after is not None:
-                drop = score_before - score_after
-                if drop >= drop_threshold:
-                    top, played = _analyze_alternatives(board, next_macro, player, move)
-                    best = top[0] if top else None
-                    alerts.append((info, drop, played, best, top, _macro_compact(macro), next_macro))
-
-            board = apply_move(board, move[0], move[1], player)
-            new_macro = compute_macro(board)
-            next_macro = next_macro_constraint(move[0], move[1], board, new_macro)
-
-        if not alerts:
-            continue
-
-        total_alerts += len(alerts)
-        print(f"  Partie {game_idx}: {game['header']}")
-        for info, drop, played, best, top, macro_before, constraint in alerts:
-            player_sym = SYMBOL[info["player"]]
-            print(f"    Coup {info['num']} IA-{player_sym}: {_format_move((info['row'], info['col']))}")
-            print(f"      chute={drop:+d} | macro={macro_before} | contrainte={constraint}")
-            if played is not None:
-                print(f"      joue: score_apres={played['score_after']:+d}, risk_reply={played['reply_risk']:+d}, next={played['next_macro']}")
-            if best is not None and (played is None or best["move"] != played["move"]):
-                gain = best["score_after"] - (played["score_after"] if played else info["score_after"])
-                print(f"      meilleure immediate: {_format_move(best['move'])}, score_apres={best['score_after']:+d}, gain={gain:+d}, risk_reply={best['reply_risk']:+d}")
-            print("      top alternatives:")
-            for alt in top:
-                tag = "*" if alt["played"] else " "
-                print(f"       {tag} {_format_move(alt['move'])}: score={alt['score_after']:+d}, risk={alt['reply_risk']:+d}, next={alt['next_macro']}")
-        print()
-
-    if total_alerts == 0:
-        print("  Aucun coup catastrophique detecte avec ce seuil.")
-    else:
-        print(f"  Total alertes : {total_alerts}")
-    print()
-
-
-# ---------------------------------------------------------------------------
 # Point d'entree
 # ---------------------------------------------------------------------------
 
@@ -2484,7 +2138,6 @@ if __name__ == "__main__":
     print()
     print("  1. Joueur vs IA")
     print("  2. IA vs IA (demonstration)")
-    print("  3. Analyser game_log.txt")
     while True:
         choice = input("  Votre choix : ").strip()
         if choice == '1':
@@ -2494,8 +2147,5 @@ if __name__ == "__main__":
         elif choice == '2':
             ai_vs_ai()
             break
-        elif choice == '3':
-            analyze_game_log()
-            break
         else:
-            print("  -> Entrez 1, 2 ou 3.")
+            print("  -> Entrez 1 ou 2.")
