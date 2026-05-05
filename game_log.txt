@@ -1,0 +1,79 @@
+PARTIE  2026-05-05 09:02:50
+Joueur=X (commence=oui)  IA=O
+============================================================
+Coup   1 | JOUEUR (X) | col 5, ligne 5 | contrainte=libre
+Coup   2 | IA     (O) | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score=-30
+Coup   3 | JOUEUR (X) | col 5, ligne 3 | contrainte=morpion (2,1)
+Coup   4 | IA     (O) | col 5, ligne 7 | contrainte=morpion (2,3) | 3.00s | score=-30
+Coup   5 | JOUEUR (X) | col 5, ligne 1 | contrainte=morpion (2,1)
+Coup   6 | IA     (O) | col 4, ligne 2 | contrainte=morpion (2,1) | 3.00s | score=-70
+Coup   7 | JOUEUR (X) | col 3, ligne 5 | contrainte=morpion (1,2)
+Coup   8 | IA     (O) | col 9, ligne 5 | contrainte=morpion (3,2) | 3.00s | score=-70
+Coup   9 | JOUEUR (X) | col 7, ligne 5 | contrainte=morpion (3,2)
+Coup  10 | IA     (O) | col 2, ligne 6 | contrainte=morpion (1,2) | 3.00s | score=-70
+Coup  11 | JOUEUR (X) | col 6, ligne 7 | contrainte=morpion (2,3)
+Coup  12 | IA     (O) | col 7, ligne 2 | contrainte=morpion (3,1) | 3.00s | score=-78
+Coup  13 | JOUEUR (X) | col 3, ligne 6 | contrainte=morpion (1,2)
+Coup  14 | IA     (O) | col 7, ligne 7 | contrainte=morpion (3,3) | 3.00s | score=-126
+Coup  15 | JOUEUR (X) | col 1, ligne 3 | contrainte=morpion (1,1)
+Coup  16 | IA     (O) | col 1, ligne 7 | contrainte=morpion (1,3) | 3.00s | score=-126
+Coup  17 | JOUEUR (X) | col 1, ligne 1 | contrainte=morpion (1,1)
+Coup  18 | IA     (O) | col 1, ligne 2 | contrainte=morpion (1,1) | 3.00s | score=-166
+Coup  19 | JOUEUR (X) | col 3, ligne 4 | contrainte=morpion (1,2)
+       -> Morpion local (1,2) remporte par X
+Coup  20 | IA     (O) | col 9, ligne 3 | contrainte=morpion (3,1) | 3.00s | score=-4303
+Coup  21 | JOUEUR (X) | col 8, ligne 7 | contrainte=morpion (3,3)
+Coup  22 | IA     (O) | col 4, ligne 3 | contrainte=morpion (2,1) | 3.00s | score=-4295
+Coup  23 | JOUEUR (X) | col 3, ligne 7 | contrainte=morpion (1,3)
+Coup  24 | IA     (O) | col 9, ligne 2 | contrainte=morpion (3,1) | 3.00s | score=-4255
+Coup  25 | JOUEUR (X) | col 9, ligne 4 | contrainte=morpion (3,2)
+Coup  26 | IA     (O) | col 8, ligne 2 | contrainte=morpion (3,1) | 3.00s | score=-4183
+       -> Morpion local (3,1) remporte par O
+Coup  27 | JOUEUR (X) | col 4, ligne 4 | contrainte=morpion (2,2)
+Coup  28 | IA     (O) | col 3, ligne 2 | contrainte=morpion (1,1) | 3.00s | score=+541
+Coup  29 | JOUEUR (X) | col 7, ligne 6 | contrainte=morpion (3,2)
+Coup  30 | IA     (O) | col 2, ligne 7 | contrainte=morpion (1,3) | 3.00s | score=+493
+Coup  31 | JOUEUR (X) | col 4, ligne 1 | contrainte=morpion (2,1)
+Coup  32 | IA     (O) | col 2, ligne 2 | contrainte=morpion (1,1) | 0.00s | score=+395
+       -> Morpion local (1,1) remporte par O
+Coup  33 | JOUEUR (X) | col 6, ligne 6 | contrainte=morpion (2,2)
+       -> Morpion local (2,2) remporte par X
+Coup  34 | IA     (O) | col 9, ligne 8 | contrainte=morpion (3,3) | 3.00s | score=-3056
+Coup  35 | JOUEUR (X) | col 7, ligne 4 | contrainte=morpion (3,2)
+       -> Morpion local (3,2) remporte par X => ALIGNEMENT MACRO !
+------------------------------------------------------------
+RESULTAT : VICTOIRE du joueur (X)
+Morpions X=3  O=2
+============================================================
+
+============================================================
+PARTIE  2026-05-05 09:12:09
+Joueur=O (commence=non)  IA=X
+============================================================
+Coup   1 | IA     (X) | col 4, ligne 4 | contrainte=libre | 3.00s | score=+0
+Coup   2 | JOUEUR (O) | col 3, ligne 1 | contrainte=morpion (1,1)
+Coup   3 | IA     (X) | col 8, ligne 1 | contrainte=morpion (3,1) | 3.00s | score=+0
+Coup   4 | JOUEUR (O) | col 6, ligne 2 | contrainte=morpion (2,1)
+Coup   5 | IA     (X) | col 8, ligne 4 | contrainte=morpion (3,2) | 3.00s | score=+0
+Coup   6 | JOUEUR (O) | col 4, ligne 2 | contrainte=morpion (2,1)
+Coup   7 | IA     (X) | col 2, ligne 4 | contrainte=morpion (1,2) | 3.00s | score=-40
+Coup   8 | JOUEUR (O) | col 5, ligne 2 | contrainte=morpion (2,1)
+       -> Morpion local (2,1) remporte par O
+Coup   9 | IA     (X) | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score=-4220
+Coup  10 | JOUEUR (O) | col 9, ligne 3 | contrainte=libre
+Coup  11 | IA     (X) | col 8, ligne 7 | contrainte=morpion (3,3) | 3.00s | score=-4188
+Coup  12 | JOUEUR (O) | col 7, ligne 3 | contrainte=libre
+Coup  13 | IA     (X) | col 2, ligne 7 | contrainte=morpion (1,3) | 3.00s | score=-4236
+Coup  14 | JOUEUR (O) | col 8, ligne 3 | contrainte=libre
+       -> Morpion local (3,1) remporte par O
+Coup  15 | IA     (X) | col 6, ligne 7 | contrainte=morpion (2,3) | 3.00s | score=-13560
+Coup  16 | JOUEUR (O) | col 2, ligne 2 | contrainte=libre
+Coup  17 | IA     (X) | col 6, ligne 4 | contrainte=morpion (2,2) | 0.00s | score=-13612
+       -> Morpion local (2,2) remporte par X
+Coup  18 | JOUEUR (O) | col 1, ligne 3 | contrainte=libre
+       -> Morpion local (1,1) remporte par O => ALIGNEMENT MACRO !
+------------------------------------------------------------
+RESULTAT : VICTOIRE du joueur (O)
+Morpions X=1  O=3
+============================================================
+
