@@ -1,79 +1,233 @@
-PARTIE  2026-05-05 09:02:50
-Joueur=X (commence=oui)  IA=O
 ============================================================
-Coup   1 | JOUEUR (X) | col 5, ligne 5 | contrainte=libre
-Coup   2 | IA     (O) | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score=-30
-Coup   3 | JOUEUR (X) | col 5, ligne 3 | contrainte=morpion (2,1)
-Coup   4 | IA     (O) | col 5, ligne 7 | contrainte=morpion (2,3) | 3.00s | score=-30
-Coup   5 | JOUEUR (X) | col 5, ligne 1 | contrainte=morpion (2,1)
-Coup   6 | IA     (O) | col 4, ligne 2 | contrainte=morpion (2,1) | 3.00s | score=-70
-Coup   7 | JOUEUR (X) | col 3, ligne 5 | contrainte=morpion (1,2)
-Coup   8 | IA     (O) | col 9, ligne 5 | contrainte=morpion (3,2) | 3.00s | score=-70
-Coup   9 | JOUEUR (X) | col 7, ligne 5 | contrainte=morpion (3,2)
-Coup  10 | IA     (O) | col 2, ligne 6 | contrainte=morpion (1,2) | 3.00s | score=-70
-Coup  11 | JOUEUR (X) | col 6, ligne 7 | contrainte=morpion (2,3)
-Coup  12 | IA     (O) | col 7, ligne 2 | contrainte=morpion (3,1) | 3.00s | score=-78
-Coup  13 | JOUEUR (X) | col 3, ligne 6 | contrainte=morpion (1,2)
-Coup  14 | IA     (O) | col 7, ligne 7 | contrainte=morpion (3,3) | 3.00s | score=-126
-Coup  15 | JOUEUR (X) | col 1, ligne 3 | contrainte=morpion (1,1)
-Coup  16 | IA     (O) | col 1, ligne 7 | contrainte=morpion (1,3) | 3.00s | score=-126
-Coup  17 | JOUEUR (X) | col 1, ligne 1 | contrainte=morpion (1,1)
-Coup  18 | IA     (O) | col 1, ligne 2 | contrainte=morpion (1,1) | 3.00s | score=-166
-Coup  19 | JOUEUR (X) | col 3, ligne 4 | contrainte=morpion (1,2)
-       -> Morpion local (1,2) remporte par X
-Coup  20 | IA     (O) | col 9, ligne 3 | contrainte=morpion (3,1) | 3.00s | score=-4303
-Coup  21 | JOUEUR (X) | col 8, ligne 7 | contrainte=morpion (3,3)
-Coup  22 | IA     (O) | col 4, ligne 3 | contrainte=morpion (2,1) | 3.00s | score=-4295
-Coup  23 | JOUEUR (X) | col 3, ligne 7 | contrainte=morpion (1,3)
-Coup  24 | IA     (O) | col 9, ligne 2 | contrainte=morpion (3,1) | 3.00s | score=-4255
-Coup  25 | JOUEUR (X) | col 9, ligne 4 | contrainte=morpion (3,2)
-Coup  26 | IA     (O) | col 8, ligne 2 | contrainte=morpion (3,1) | 3.00s | score=-4183
-       -> Morpion local (3,1) remporte par O
-Coup  27 | JOUEUR (X) | col 4, ligne 4 | contrainte=morpion (2,2)
-Coup  28 | IA     (O) | col 3, ligne 2 | contrainte=morpion (1,1) | 3.00s | score=+541
-Coup  29 | JOUEUR (X) | col 7, ligne 6 | contrainte=morpion (3,2)
-Coup  30 | IA     (O) | col 2, ligne 7 | contrainte=morpion (1,3) | 3.00s | score=+493
-Coup  31 | JOUEUR (X) | col 4, ligne 1 | contrainte=morpion (2,1)
-Coup  32 | IA     (O) | col 2, ligne 2 | contrainte=morpion (1,1) | 0.00s | score=+395
-       -> Morpion local (1,1) remporte par O
-Coup  33 | JOUEUR (X) | col 6, ligne 6 | contrainte=morpion (2,2)
-       -> Morpion local (2,2) remporte par X
-Coup  34 | IA     (O) | col 9, ligne 8 | contrainte=morpion (3,3) | 3.00s | score=-3056
-Coup  35 | JOUEUR (X) | col 7, ligne 4 | contrainte=morpion (3,2)
-       -> Morpion local (3,2) remporte par X => ALIGNEMENT MACRO !
+IA VS IA  2026-05-05 15:21:11
+Budget temps : 3.0s par coup
+Mode automatique : oui
+Diversification ouvertures : oui
+============================================================
+Coup   1 | IA-X | col 5, ligne 6 | contrainte=libre | 0.01s | score_avant=+0 | score_apres=+10
+Coup   2 | IA-O | col 4, ligne 7 | contrainte=morpion (2,3) | 0.00s | score_avant=-10 | score_apres=+8
+Coup   3 | IA-X | col 1, ligne 1 | contrainte=morpion (1,1) | 0.00s | score_avant=-8 | score_apres=+10
+Coup   4 | IA-O | col 2, ligne 1 | contrainte=morpion (1,1) | 0.00s | score_avant=-10 | score_apres=+0
+Coup   5 | IA-X | col 5, ligne 1 | contrainte=morpion (2,1) | 0.00s | score_avant=+0 | score_apres=+10
+Coup   6 | IA-O | col 6, ligne 1 | contrainte=morpion (2,1) | 0.00s | score_avant=-10 | score_apres=+8
+Coup   7 | IA-X | col 7, ligne 2 | contrainte=morpion (3,1) | 0.00s | score_avant=-8 | score_apres=+2
+Coup   8 | IA-O | col 1, ligne 4 | contrainte=morpion (1,2) | 0.00s | score_avant=-2 | score_apres=+16
+Coup   9 | IA-X | col 1, ligne 3 | contrainte=morpion (1,1) | 3.00s | score_avant=-16 | score_apres=+122
+Coup  10 | IA-O | col 1, ligne 9 | contrainte=morpion (1,3) | 3.00s | score_avant=-162 | score_apres=-144
+Coup  11 | IA-X | col 3, ligne 7 | contrainte=morpion (1,3) | 3.00s | score_avant=+104 | score_apres=+122
+Coup  12 | IA-O | col 9, ligne 2 | contrainte=morpion (3,1) | 3.00s | score_avant=-162 | score_apres=-152
+Coup  13 | IA-X | col 8, ligne 5 | contrainte=morpion (3,2) | 3.00s | score_avant=+112 | score_apres=+142
+Coup  14 | IA-O | col 6, ligne 6 | contrainte=morpion (2,2) | 3.00s | score_avant=-182 | score_apres=-164
+Coup  15 | IA-X | col 9, ligne 8 | contrainte=morpion (3,3) | 3.00s | score_avant=+124 | score_apres=+134
+Coup  16 | IA-O | col 7, ligne 5 | contrainte=morpion (3,2) | 3.00s | score_avant=-174 | score_apres=-164
+Coup  17 | IA-X | col 3, ligne 5 | contrainte=morpion (1,2) | 3.00s | score_avant=+124 | score_apres=+134
+Coup  18 | IA-O | col 9, ligne 4 | contrainte=morpion (3,2) | 3.00s | score_avant=-174 | score_apres=-156
+Coup  19 | IA-X | col 9, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=+116 | score_apres=+134
+Coup  20 | IA-O | col 8, ligne 3 | contrainte=morpion (3,1) | 3.00s | score_avant=-174 | score_apres=-164
+Coup  21 | IA-X | col 6, ligne 9 | contrainte=morpion (2,3) | 3.00s | score_avant=+124 | score_apres=+142
+Coup  22 | IA-O | col 8, ligne 8 | contrainte=morpion (3,3) | 3.00s | score_avant=-182 | score_apres=-152
+Coup  23 | IA-X | col 5, ligne 5 | contrainte=morpion (2,2) | 3.00s | score_avant=+112 | score_apres=+262
+Coup  24 | IA-O | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score_avant=-342 | score_apres=-167
+Coup  25 | IA-X | col 5, ligne 3 | contrainte=morpion (2,1) | 3.00s | score_avant=+127 | score_apres=+257
+Coup  26 | IA-O | col 4, ligne 9 | contrainte=morpion (2,3) | 3.00s | score_avant=-337 | score_apres=-199
+Coup  27 | IA-X | col 3, ligne 8 | contrainte=morpion (1,3) | 3.00s | score_avant=+79 | score_apres=+209
+Coup  28 | IA-O | col 9, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=-369 | score_apres=-231
+Coup  29 | IA-X | col 9, ligne 9 | contrainte=morpion (3,3) | 3.00s | score_avant=+31 | score_apres=+169
+Coup  30 | IA-O | col 9, ligne 7 | contrainte=morpion (3,3) | 3.00s | score_avant=-409 | score_apres=-106
+Coup  31 | IA-X | col 7, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=-134 | score_apres=+344
+Coup  32 | IA-O | col 1, ligne 2 | contrainte=morpion (1,1) | 3.00s | score_avant=-764 | score_apres=-589
+Coup  33 | IA-X | col 2, ligne 5 | contrainte=morpion (1,2) | 3.00s | score_avant=+209 | score_apres=+359
+Coup  34 | IA-O | col 6, ligne 5 | contrainte=morpion (2,2) | 3.00s | score_avant=-779 | score_apres=-649
+Coup  35 | IA-X | col 8, ligne 4 | contrainte=morpion (3,2) | 3.00s | score_avant=+189 | score_apres=+319
+Coup  36 | IA-O | col 5, ligne 2 | contrainte=morpion (2,1) | 3.00s | score_avant=-819 | score_apres=-504
+Coup  37 | IA-X | col 6, ligne 4 | contrainte=morpion (2,2) | 3.00s | score_avant=+4 | score_apres=+307
+Coup  38 | IA-O | col 8, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=-807 | score_apres=-192
+Coup  39 | IA-X | col 4, ligne 1 | contrainte=morpion (2,1) | 3.00s | score_avant=-208 | score_apres=-195
+Coup  40 | IA-O | col 3, ligne 3 | contrainte=morpion (1,1) | 3.00s | score_avant=-205 | score_apres=-187
+Coup  41 | IA-X | col 7, ligne 7 | contrainte=morpion (3,3) | 3.00s | score_avant=-213 | score_apres=-200
+Coup  42 | IA-O | col 2, ligne 3 | contrainte=morpion (1,1) | 3.00s | score_avant=-200 | score_apres=-75
+Coup  43 | IA-X | col 5, ligne 8 | contrainte=morpion (2,3) | 3.00s | score_avant=-365 | score_apres=-340
+Coup  44 | IA-O | col 4, ligne 4 | contrainte=morpion (2,2) | 3.00s | score_avant=-100 | score_apres=-92
+Coup  45 | IA-X | col 2, ligne 2 | contrainte=morpion (1,1) | 3.00s | score_avant=-348 | score_apres=-38
+Coup  46 | IA-O | col 4, ligne 5 | contrainte=morpion (2,2) | 3.00s | score_avant=-402 | score_apres=-277
+Coup  47 | IA-X | col 1, ligne 5 | contrainte=morpion (1,2) | 3.00s | score_avant=-203 | score_apres=-11906
+       -> Morpion local (1,2) remporte par IA-X
+Coup  48 | IA-O | col 3, ligne 9 | contrainte=libre | 3.00s | score_avant=+9797 | score_apres=-4294
+Coup  49 | IA-X | col 7, ligne 9 | contrainte=morpion (3,3) | 3.00s | score_avant=+2488 | score_apres=+3131
+Coup  50 | IA-O | col 2, ligne 7 | contrainte=morpion (1,3) | 3.00s | score_avant=-5077 | score_apres=-5047
+Coup  51 | IA-X | col 6, ligne 2 | contrainte=morpion (2,1) | 3.00s | score_avant=+3111 | score_apres=+3121
+Coup  52 | IA-O | col 7, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=-5057 | score_apres=-3638
+Coup  53 | IA-X | col 1, ligne 7 | contrainte=morpion (1,3) | 3.00s | score_avant=+1815 | score_apres=+1841
+Coup  54 | IA-O | col 3, ligne 1 | contrainte=morpion (1,1) | 3.00s | score_avant=-3677 | score_apres=-2783
+Coup  55 | IA-X | col 7, ligne 3 | contrainte=morpion (3,1) | 3.00s | score_avant=+1245 | score_apres=+6475
+       -> Morpion local (3,1) remporte par IA-X
+Coup  56 | IA-O | col 2, ligne 9 | contrainte=morpion (1,3) | 3.00s | score_avant=-10174 | score_apres=-4551
+       -> Morpion local (1,3) remporte par IA-O
+Coup  57 | IA-X | col 5, ligne 7 | contrainte=morpion (2,3) | 3.00s | score_avant=+1580 | score_apres=+1970
+Coup  58 | IA-O | col 4, ligne 2 | contrainte=morpion (2,1) | 3.00s | score_avant=-4891 | score_apres=-36376
+Coup  59 | IA-X | col 7, ligne 4 | contrainte=libre | 3.00s | score_avant=+33460 | score_apres=+2306
+Coup  60 | IA-O | col 3, ligne 2 | contrainte=morpion (1,1) | 0.70s | score_avant=-5275 | score_apres=-20005
+       -> Morpion local (1,1) remporte par IA-O
+Coup  61 | IA-X | col 9, ligne 5 | contrainte=morpion (3,2) | 1.54s | score_avant=+16868 | score_apres=-152
+Coup  62 | IA-O | col 8, ligne 6 | contrainte=morpion (3,2) | 0.97s | score_avant=-3055 | score_apres=+2025
+       -> Morpion local (3,2) remporte par IA-O
+Coup  63 | IA-X | col 4, ligne 8 | contrainte=morpion (2,3) | 1.81s | score_avant=-3330 | score_apres=-10785
+Coup  64 | IA-O | col 8, ligne 7 | contrainte=libre | 2.39s | score_avant=+9795 | score_apres=+1045
+Coup  65 | IA-X | col 6, ligne 3 | contrainte=morpion (2,1) | 0.32s | score_avant=-2280 | score_apres=-20152
+Coup  66 | IA-O | col 8, ligne 9 | contrainte=morpion (3,3) | 0.20s | score_avant=+18877 | score_apres=+21172
+       -> Morpion local (3,3) remporte par IA-O
+Coup  67 | IA-X | col 6, ligne 8 | contrainte=morpion (2,3) | 0.06s | score_avant=-33634 | score_apres=-110375
+       -> Morpion local (2,3) remporte par IA-X
+Coup  68 | IA-O | col 4, ligne 6 | contrainte=libre | 0.00s | score_avant=+105216 | score_apres=+100000
+       -> Morpion local (2,2) remporte par IA-O => ALIGNEMENT MACRO !
 ------------------------------------------------------------
-RESULTAT : VICTOIRE du joueur (X)
-Morpions X=3  O=2
+RESULTAT : VICTOIRE IA-O
+Morpions X=3  O=5  |  Coups joues=68
+Temps total IA-X=81.8s  IA-O=79.3s
 ============================================================
 
 ============================================================
-PARTIE  2026-05-05 09:12:09
+IA VS IA  2026-05-05 15:24:06
+Budget temps : 3.0s par coup
+Mode automatique : oui
+Diversification ouvertures : oui
+============================================================
+Coup   1 | IA-X | col 5, ligne 6 | contrainte=libre | 0.01s | score_avant=+0 | score_apres=+10
+Coup   2 | IA-O | col 4, ligne 7 | contrainte=morpion (2,3) | 0.00s | score_avant=-10 | score_apres=+8
+Coup   3 | IA-X | col 1, ligne 1 | contrainte=morpion (1,1) | 0.00s | score_avant=-8 | score_apres=+10
+Coup   4 | IA-O | col 2, ligne 1 | contrainte=morpion (1,1) | 0.00s | score_avant=-10 | score_apres=+0
+Coup   5 | IA-X | col 5, ligne 1 | contrainte=morpion (2,1) | 0.00s | score_avant=+0 | score_apres=+10
+Coup   6 | IA-O | col 6, ligne 1 | contrainte=morpion (2,1) | 0.00s | score_avant=-10 | score_apres=+8
+Coup   7 | IA-X | col 7, ligne 2 | contrainte=morpion (3,1) | 0.00s | score_avant=-8 | score_apres=+2
+Coup   8 | IA-O | col 1, ligne 4 | contrainte=morpion (1,2) | 0.00s | score_avant=-2 | score_apres=+16
+Coup   9 | IA-X | col 1, ligne 3 | contrainte=morpion (1,1) | 3.00s | score_avant=-16 | score_apres=+122
+Coup  10 | IA-O | col 1, ligne 9 | contrainte=morpion (1,3) | 3.00s | score_avant=-162 | score_apres=-144
+Coup  11 | IA-X | col 3, ligne 7 | contrainte=morpion (1,3) | 3.00s | score_avant=+104 | score_apres=+122
+Coup  12 | IA-O | col 9, ligne 2 | contrainte=morpion (3,1) | 3.00s | score_avant=-162 | score_apres=-152
+Coup  13 | IA-X | col 8, ligne 5 | contrainte=morpion (3,2) | 3.00s | score_avant=+112 | score_apres=+142
+Coup  14 | IA-O | col 6, ligne 6 | contrainte=morpion (2,2) | 3.00s | score_avant=-182 | score_apres=-164
+Coup  15 | IA-X | col 9, ligne 8 | contrainte=morpion (3,3) | 3.00s | score_avant=+124 | score_apres=+134
+Coup  16 | IA-O | col 7, ligne 5 | contrainte=morpion (3,2) | 3.00s | score_avant=-174 | score_apres=-164
+Coup  17 | IA-X | col 3, ligne 5 | contrainte=morpion (1,2) | 3.00s | score_avant=+124 | score_apres=+134
+Coup  18 | IA-O | col 9, ligne 4 | contrainte=morpion (3,2) | 3.00s | score_avant=-174 | score_apres=-156
+Coup  19 | IA-X | col 9, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=+116 | score_apres=+134
+Coup  20 | IA-O | col 8, ligne 3 | contrainte=morpion (3,1) | 3.00s | score_avant=-174 | score_apres=-164
+Coup  21 | IA-X | col 6, ligne 9 | contrainte=morpion (2,3) | 3.00s | score_avant=+124 | score_apres=+142
+Coup  22 | IA-O | col 8, ligne 8 | contrainte=morpion (3,3) | 3.00s | score_avant=-182 | score_apres=-152
+Coup  23 | IA-X | col 5, ligne 5 | contrainte=morpion (2,2) | 3.00s | score_avant=+112 | score_apres=+262
+Coup  24 | IA-O | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score_avant=-342 | score_apres=-167
+Coup  25 | IA-X | col 5, ligne 3 | contrainte=morpion (2,1) | 3.00s | score_avant=+127 | score_apres=+257
+Coup  26 | IA-O | col 4, ligne 9 | contrainte=morpion (2,3) | 3.00s | score_avant=-337 | score_apres=-199
+Coup  27 | IA-X | col 3, ligne 9 | contrainte=morpion (1,3) | 3.00s | score_avant=+79 | score_apres=+217
+Coup  28 | IA-O | col 9, ligne 9 | contrainte=morpion (3,3) | 3.00s | score_avant=-377 | score_apres=-239
+Coup  29 | IA-X | col 7, ligne 7 | contrainte=morpion (3,3) | 3.00s | score_avant=+39 | score_apres=+222
+Coup  30 | IA-O | col 1, ligne 2 | contrainte=morpion (1,1) | 3.00s | score_avant=-382 | score_apres=-207
+Coup  31 | IA-X | col 3, ligne 4 | contrainte=morpion (1,2) | 3.00s | score_avant=+87 | score_apres=+225
+Coup  32 | IA-O | col 8, ligne 2 | contrainte=morpion (3,1) | 3.00s | score_avant=-385 | score_apres=-240
+Coup  33 | IA-X | col 6, ligne 5 | contrainte=morpion (2,2) | 3.00s | score_avant=+40 | score_apres=+170
+Coup  34 | IA-O | col 9, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=-410 | score_apres=-272
+Coup  35 | IA-X | col 7, ligne 8 | contrainte=morpion (3,3) | 3.00s | score_avant=-8 | score_apres=+117
+Coup  36 | IA-O | col 2, ligne 6 | contrainte=morpion (1,2) | 3.00s | score_avant=-437 | score_apres=-427
+Coup  37 | IA-X | col 4, ligne 8 | contrainte=morpion (2,3) | 3.00s | score_avant=+107 | score_apres=+282
+Coup  38 | IA-O | col 1, ligne 5 | contrainte=morpion (1,2) | 3.01s | score_avant=-562 | score_apres=-432
+Coup  39 | IA-X | col 3, ligne 6 | contrainte=morpion (1,2) | 3.00s | score_avant=+112 | score_apres=+3522
+       -> Morpion local (1,2) remporte par IA-X
+Coup  40 | IA-O | col 8, ligne 9 | contrainte=morpion (3,3) | 3.00s | score_avant=-5112 | score_apres=-4642
+Coup  41 | IA-X | col 5, ligne 7 | contrainte=morpion (2,3) | 3.00s | score_avant=+2872 | score_apres=+2882
+Coup  42 | IA-O | col 4, ligne 1 | contrainte=morpion (2,1) | 3.00s | score_avant=-4652 | score_apres=-4639
+Coup  43 | IA-X | col 3, ligne 1 | contrainte=morpion (1,1) | 3.00s | score_avant=+2869 | score_apres=+3135
+Coup  44 | IA-O | col 9, ligne 3 | contrainte=morpion (3,1) | 3.00s | score_avant=-5158 | score_apres=-4685
+Coup  45 | IA-X | col 7, ligne 9 | contrainte=morpion (3,3) | 3.00s | score_avant=+2482 | score_apres=+7099
+       -> Morpion local (3,3) remporte par IA-X
+Coup  46 | IA-O | col 2, ligne 7 | contrainte=morpion (1,3) | 3.00s | score_avant=-10199 | score_apres=-10169
+Coup  47 | IA-X | col 5, ligne 2 | contrainte=morpion (2,1) | 3.00s | score_avant=+7079 | score_apres=+10220
+       -> Morpion local (2,1) remporte par IA-X
+Coup  48 | IA-O | col 6, ligne 4 | contrainte=morpion (2,2) | 3.00s | score_avant=-14270 | score_apres=-13871
+Coup  49 | IA-X | col 7, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=+9874 | score_apres=+11160
+Coup  50 | IA-O | col 2, ligne 2 | contrainte=morpion (1,1) | 3.00s | score_avant=-16220 | score_apres=-32255
+Coup  51 | IA-X | col 4, ligne 5 | contrainte=morpion (2,2) | 3.00s | score_avant=+27570 | score_apres=+27582
+       -> Morpion local (2,2) remporte par IA-X
+Coup  52 | IA-O | col 3, ligne 2 | contrainte=libre | 0.03s | score_avant=-49123 | score_apres=-53520
+       -> Morpion local (1,1) remporte par IA-O
+Coup  53 | IA-X | col 8, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=+38937 | score_apres=+39587
+Coup  54 | IA-O | col 5, ligne 9 | contrainte=morpion (2,3) | 3.00s | score_avant=-54710 | score_apres=-54675
+Coup  55 | IA-X | col 6, ligne 8 | contrainte=morpion (2,3) | 3.00s | score_avant=+39562 | score_apres=+36912
+Coup  56 | IA-O | col 7, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=-54225 | score_apres=-74789
+Coup  57 | IA-X | col 3, ligne 8 | contrainte=morpion (1,3) | 3.00s | score_avant=+57472 | score_apres=+48055
+       -> Morpion local (1,3) remporte par IA-X
+Coup  58 | IA-O | col 8, ligne 4 | contrainte=morpion (3,2) | 0.10s | score_avant=-73377 | score_apres=-183872
+Coup  59 | IA-X | col 8, ligne 1 | contrainte=libre | 0.00s | score_avant=+159180 | score_apres=+100000
+       -> Morpion local (3,1) remporte par IA-X => ALIGNEMENT MACRO !
+------------------------------------------------------------
+RESULTAT : VICTOIRE IA-X
+Morpions X=6  O=1  |  Coups joues=59
+Temps total IA-X=75.0s  IA-O=69.2s
+============================================================
+
+============================================================
+PARTIE  2026-05-05 15:31:40
 Joueur=O (commence=non)  IA=X
 ============================================================
-Coup   1 | IA     (X) | col 4, ligne 4 | contrainte=libre | 3.00s | score=+0
-Coup   2 | JOUEUR (O) | col 3, ligne 1 | contrainte=morpion (1,1)
-Coup   3 | IA     (X) | col 8, ligne 1 | contrainte=morpion (3,1) | 3.00s | score=+0
-Coup   4 | JOUEUR (O) | col 6, ligne 2 | contrainte=morpion (2,1)
-Coup   5 | IA     (X) | col 8, ligne 4 | contrainte=morpion (3,2) | 3.00s | score=+0
-Coup   6 | JOUEUR (O) | col 4, ligne 2 | contrainte=morpion (2,1)
-Coup   7 | IA     (X) | col 2, ligne 4 | contrainte=morpion (1,2) | 3.00s | score=-40
-Coup   8 | JOUEUR (O) | col 5, ligne 2 | contrainte=morpion (2,1)
-       -> Morpion local (2,1) remporte par O
-Coup   9 | IA     (X) | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score=-4220
-Coup  10 | JOUEUR (O) | col 9, ligne 3 | contrainte=libre
-Coup  11 | IA     (X) | col 8, ligne 7 | contrainte=morpion (3,3) | 3.00s | score=-4188
-Coup  12 | JOUEUR (O) | col 7, ligne 3 | contrainte=libre
-Coup  13 | IA     (X) | col 2, ligne 7 | contrainte=morpion (1,3) | 3.00s | score=-4236
-Coup  14 | JOUEUR (O) | col 8, ligne 3 | contrainte=libre
-       -> Morpion local (3,1) remporte par O
-Coup  15 | IA     (X) | col 6, ligne 7 | contrainte=morpion (2,3) | 3.00s | score=-13560
-Coup  16 | JOUEUR (O) | col 2, ligne 2 | contrainte=libre
-Coup  17 | IA     (X) | col 6, ligne 4 | contrainte=morpion (2,2) | 0.00s | score=-13612
+Coup   1 | IA     (X) | col 5, ligne 5 | contrainte=libre | 3.00s | score_avant=+0 | score_apres=+30
+Coup   2 | JOUEUR (O) | col 4, ligne 4 | contrainte=morpion (2,2)
+Coup   3 | IA     (X) | col 1, ligne 1 | contrainte=morpion (1,1) | 3.00s | score_avant=+12 | score_apres=+30
+Coup   4 | JOUEUR (O) | col 3, ligne 1 | contrainte=morpion (1,1)
+Coup   5 | IA     (X) | col 9, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=+12 | score_apres=+30
+Coup   6 | JOUEUR (O) | col 7, ligne 3 | contrainte=morpion (3,1)
+Coup   7 | IA     (X) | col 1, ligne 9 | contrainte=morpion (1,3) | 3.00s | score_avant=+12 | score_apres=+30
+Coup   8 | JOUEUR (O) | col 3, ligne 9 | contrainte=morpion (1,3)
+Coup   9 | IA     (X) | col 8, ligne 7 | contrainte=morpion (3,3) | 3.00s | score_avant=+12 | score_apres=+22
+Coup  10 | JOUEUR (O) | col 5, ligne 1 | contrainte=morpion (2,1)
+Coup  11 | IA     (X) | col 6, ligne 2 | contrainte=morpion (2,1) | 3.00s | score_avant=+12 | score_apres=+22
+Coup  12 | JOUEUR (O) | col 9, ligne 5 | contrainte=morpion (3,2)
+Coup  13 | IA     (X) | col 8, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=+12 | score_apres=+22
+Coup  14 | JOUEUR (O) | col 5, ligne 9 | contrainte=morpion (2,3)
+Coup  15 | IA     (X) | col 6, ligne 9 | contrainte=morpion (2,3) | 3.00s | score_avant=+12 | score_apres=+30
+Coup  16 | JOUEUR (O) | col 8, ligne 9 | contrainte=morpion (3,3)
+Coup  17 | IA     (X) | col 5, ligne 8 | contrainte=morpion (2,3) | 3.00s | score_avant=+20 | score_apres=+170
+Coup  18 | JOUEUR (O) | col 4, ligne 5 | contrainte=morpion (2,2)
+Coup  19 | IA     (X) | col 2, ligne 6 | contrainte=morpion (1,2) | 3.00s | score_avant=+0 | score_apres=+10
+Coup  20 | JOUEUR (O) | col 4, ligne 7 | contrainte=morpion (2,3)
+Coup  21 | IA     (X) | col 1, ligne 2 | contrainte=morpion (1,1) | 3.00s | score_avant=-133 | score_apres=-3
+Coup  22 | JOUEUR (O) | col 3, ligne 6 | contrainte=morpion (1,2)
+Coup  23 | IA     (X) | col 9, ligne 7 | contrainte=morpion (3,3) | 3.00s | score_avant=-21 | score_apres=+117
+Coup  24 | JOUEUR (O) | col 9, ligne 3 | contrainte=morpion (3,1)
+Coup  25 | IA     (X) | col 7, ligne 7 | contrainte=morpion (3,3) | 3.00s | score_avant=-61 | score_apres=+4510
+       -> Morpion local (3,3) remporte par X
+Coup  26 | JOUEUR (O) | col 1, ligne 3 | contrainte=morpion (1,1)
+Coup  27 | IA     (X) | col 1, ligne 8 | contrainte=morpion (1,3) | 3.00s | score_avant=+3904 | score_apres=+4164
+Coup  28 | JOUEUR (O) | col 3, ligne 5 | contrainte=morpion (1,2)
+Coup  29 | IA     (X) | col 8, ligne 4 | contrainte=morpion (3,2) | 3.00s | score_avant=+3994 | score_apres=+4254
+Coup  30 | JOUEUR (O) | col 5, ligne 3 | contrainte=morpion (2,1)
+Coup  31 | IA     (X) | col 6, ligne 7 | contrainte=morpion (2,3) | 3.00s | score_avant=+4084 | score_apres=+5040
+Coup  32 | JOUEUR (O) | col 7, ligne 2 | contrainte=morpion (3,1)
+Coup  33 | IA     (X) | col 2, ligne 5 | contrainte=morpion (1,2) | 3.00s | score_avant=+4060 | score_apres=+4210
+Coup  34 | JOUEUR (O) | col 6, ligne 4 | contrainte=morpion (2,2)
+Coup  35 | IA     (X) | col 9, ligne 2 | contrainte=morpion (3,1) | 3.00s | score_avant=+3214 | score_apres=+3224
+Coup  36 | JOUEUR (O) | col 8, ligne 5 | contrainte=morpion (3,2)
+Coup  37 | IA     (X) | col 5, ligne 4 | contrainte=morpion (2,2) | 3.00s | score_avant=+2594 | score_apres=+3824
+Coup  38 | JOUEUR (O) | col 6, ligne 1 | contrainte=morpion (2,1)
+Coup  39 | IA     (X) | col 7, ligne 1 | contrainte=morpion (3,1) | 3.00s | score_avant=+3326 | score_apres=+4572
+Coup  40 | JOUEUR (O) | col 2, ligne 2 | contrainte=morpion (1,1)
+       -> Morpion local (1,1) remporte par O
+Coup  41 | IA     (X) | col 5, ligne 6 | contrainte=morpion (2,2) | 3.00s | score_avant=-2243 | score_apres=+3198
        -> Morpion local (2,2) remporte par X
-Coup  18 | JOUEUR (O) | col 1, ligne 3 | contrainte=libre
-       -> Morpion local (1,1) remporte par O => ALIGNEMENT MACRO !
+Coup  42 | JOUEUR (O) | col 6, ligne 8 | contrainte=morpion (2,3)
+Coup  43 | IA     (X) | col 7, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=+2488 | score_apres=+2764
+Coup  44 | JOUEUR (O) | col 3, ligne 8 | contrainte=morpion (1,3)
+Coup  45 | IA     (X) | col 9, ligne 6 | contrainte=morpion (3,2) | 3.00s | score_avant=+2254 | score_apres=+9962
+       -> Morpion local (3,2) remporte par X
+Coup  46 | JOUEUR (O) | col 8, ligne 1 | contrainte=libre
+Coup  47 | IA     (X) | col 4, ligne 3 | contrainte=morpion (2,1) | 3.00s | score_avant=+32787 | score_apres=+32841
+Coup  48 | JOUEUR (O) | col 3, ligne 7 | contrainte=morpion (1,3)
+       -> Morpion local (1,3) remporte par O
+Coup  49 | IA     (X) | col 8, ligne 3 | contrainte=morpion (3,1) | 2.89s | score_avant=+19505 | score_apres=+20380
+Coup  50 | JOUEUR (O) | col 5, ligne 7 | contrainte=morpion (2,3)
+Coup  51 | IA     (X) | col 6, ligne 3 | contrainte=morpion (2,1) | 2.17s | score_avant=+20380 | score_apres=-116096
+Coup  52 | JOUEUR (O) | col 3, ligne 4 | contrainte=libre
+       -> Morpion local (1,2) remporte par O => ALIGNEMENT MACRO !
 ------------------------------------------------------------
 RESULTAT : VICTOIRE du joueur (O)
-Morpions X=1  O=3
+Morpions X=3  O=3
 ============================================================
 
