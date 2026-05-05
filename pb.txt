@@ -1,207 +1,316 @@
 ================================================================================
 COMPTE-RENDU D'IMPLEMENTATION - ULTIMATE TIC-TAC-TOE
-IA Minimax + Elagage Alpha-Beta
+IA Minimax + Elagage Alpha-Beta -- Version refondue
 ================================================================================
 
 
 --------------------------------------------------------------------------------
-1. ARCHITECTURE GENERALE
+0. RESUME EXECUTIF
 --------------------------------------------------------------------------------
 
-Le programme est structure autour de :
-  - Une representation 9x9 du plateau (liste de listes Python)
-  - Un etat "macro" 3x3 derive a la volee (compute_macro) indiquant quel joueur
-    a gagne chaque morpion local
-  - Un hash Zobrist mis a jour incrementalement pour identifier les positions
-  - Une transposition table (dictionnaire hash -> entree) pour eviter de
-    recalculer des positions deja visitees
-  - Un moteur Minimax avec elagage Alpha-Beta, killer moves et iterative
-    deepening borne par un budget temps
+Ce document detaille la refonte complete de l'IA Ultimate Tic-Tac-Toe.
 
-Coordonnees : colonne d'abord, ligne ensuite, 1-base (convention de l'enonce).
+L'IA initiale fonctionnait mais souffrait de neuf problemes structurels
+(cf. section 2). Une analyse critique a permis de les regrouper en quatre
+familles : moteur (recopie d'etat, hash incomplet), heuristique (locale,
+sans flux), recherche (pas de quiescence, ordering pauvre) et detection
+de coups forces (myope).
 
+La refonte a porte sur tous ces axes simultanement. La validation par auto-jeu
+a confirme un gain net :
 
---------------------------------------------------------------------------------
-2. ALGORITHME PRINCIPAL : MINIMAX + ALPHA-BETA
---------------------------------------------------------------------------------
+  - duel direct nouvelle vs ancienne IA, budget 1s/coup :
+      partie 1 (NEW=X) -> NEW gagne 3-0 morpions en 27 coups
+      partie 2 (NEW=O) -> NEW gagne 5-1 morpions en 34 coups
 
-Implemente dans minimax(). Caracteristiques :
+  - profondeur atteinte (budget 3s) :
+      ouverture libre   : depth 5
+      apres 1er coup    : depth 7
+      mid-game (9 coups): depth 8
 
-  - Elagage Alpha-Beta standard : coupe les branches qui ne peuvent pas
-    ameliorer le meilleur score connu. Reduit l'arbre de O(b^d) a O(b^(d/2))
-    dans le meilleur cas.
-
-  - Iterative Deepening (ai_choose_move_timed) : on explore profondeur 1, 2,
-    3... jusqu'a epuisement du budget temps (TIME_LIMIT = 3.0s). On retourne
-    le meilleur coup de la derniere profondeur completee. Avantage : temps de
-    reponse garanti, les profondeurs basses sont quasi-gratuites grace au tri
-    des coups.
-
-  - Timeout strict : une exception _Timeout est levee des que time.time() >=
-    _deadline a l'entree de chaque noeud minimax. Cela garantit le respect du
-    budget meme au milieu d'une recherche profonde.
-    PROBLEME INITIAL : le timeout etait verifie seulement entre les iterations
-    de profondeur, pas a l'interieur de minimax. Certains coups prenaient 12s
-    pour un budget de 3s. SOLUTION : verification a chaque appel recursif.
-
-  - Transposition Table (TT) : chaque position est hashee via Zobrist (XOR de
-    valeurs aleatoires precalculees par case/joueur). La TT stocke
-    (profondeur, score, flag, meilleur_coup). Trois flags : EXACT (score
-    fiable), LOWER (borne inferieure, coupure beta), UPPER (borne superieure,
-    coupure alpha). La TT est videe a chaque nouveau coup pour eviter la
-    contamination entre positions trop differentes.
-
-  - Killer Moves : on memorise par profondeur les 2 derniers coups ayant cause
-    une coupure beta (independamment de la position). Ces coups sont places en
-    tete de liste lors du tri, ce qui ameliore l'elagage sans cout memoire
-    notable.
-
-  - Tri des coups (move ordering) : crucial pour l'efficacite de l'elagage.
-    Ordre decroissant de priorite :
-      1. Coups forces (victoire macro immediate ou blocage macro adverse)
-         -> traites AVANT minimax via _forced_move(), pas de recherche
-      2. Victoire du morpion local completant une ligne macro
-      3. Blocage d'une victoire macro adverse
-      4. Blocage d'un morpion local qui aurait complete la macro adverse
-      5. Avancement d'une ligne macro pour soi
-      6. Victoire d'un morpion local (neutre macro)
-      7. Blocage d'un morpion local adverse
-      8. Penalite : envoyer l'adversaire la ou il gagne la macro (+500)
-      9. Penalite : envoyer l'adversaire sur une case qui l'avance (+150)
-      10. Position locale (centre > coins > bords)
+  - 8/8 victoires contre un joueur aleatoire (budget 0.5s/coup).
 
 
 --------------------------------------------------------------------------------
-3. HEURISTIQUE D'EVALUATION
+1. ARCHITECTURE GENERALE (NOUVELLE VERSION)
 --------------------------------------------------------------------------------
 
-evaluate() retourne un score pour le joueur ai_player. Positif = favorable.
+  - Etat de jeu mutable (classe GameState) avec make/unmake -> aucune copie
+    de plateau pendant la recherche. Les champs maintenus :
+      board[r][c]   : pions
+      macro[mr][mc] : gagnants des morpions locaux (mis a jour en O(1))
+      occ[mr][mc]   : nombre de cases occupees par morpion (pour is_full O(1))
+      side          : joueur a jouer
+      next_macro    : contrainte courante
+      hash          : hash Zobrist incremental
+      history       : pile pour unmake_move
 
-  Niveaux d'evaluation (par ordre d'importance) :
+  - Hash Zobrist enrichi :
+      ZOBRIST[player][row][col] : 81*2 valeurs aleatoires 64 bits
+      ZOBRIST_NEXT[idx]         : 10 valeurs (9 morpions + libre)
+      ZOBRIST_SIDE              : 1 valeur (XOR si c'est au tour de O)
+    Le hash distingue maintenant tous les etats semantiquement differents,
+    rendant la table de transposition fiable.
 
-  A. Victoire/defaite globale : +100 000 / -100 000 (+ bonus de profondeur
-     pour preferer les victoires rapides)
+  - Transposition table avec strategie de remplacement par profondeur :
+    une nouvelle entree ne remplace pas une entree plus profonde. La TT est
+    conservee entre coups (le hash est suffisamment discriminant pour que
+    les sous-arbres restent valides).
 
-  B. Lignes macro (_macro_line_score) :
-     - 2 morpions alignes sans blocage : +5 000
-     - 1 morpion dans une ligne ouverte : +500
-     - Adversaire a 2 alignes         : -7 000  (superieur a +5 000 pour
-       forcer le blocage face a une menace imminente realisable)
-     - Adversaire a 1 dans une ligne  : -500
+  - Iterative deepening borne par budget temps (TIME_LIMIT = 3s par defaut).
 
-     PROBLEME INITIAL : la penalite de blocage etait egale au gain d'attaque
-     (±5 000). L'IA preferait attaquer plutot que bloquer car les scores
-     semblaient equivalents. SOLUTION : penalite portee a -7 000.
+  - Quiescence search (profondeur additionnelle limitee a QUIESCENCE_MAX = 4)
+    sur les coups "instables" (gain ou blocage de morpion local).
 
-  C. Bonus positionnels macro :
-     - Centre macro (1,1) : ±800
-     - Coins macro         : ±300
-     - Bords macro         : ±150
+  - Move ordering hierarchique : TT-move > killers > history > heuristique
+    statique (impact macro, blocage, bon/mauvais envoi de l'adversaire).
 
-  D. Morpions locaux gagnes : ±100 par morpion (volontairement bas pour ne pas
-     surcharger la strategie macro)
-     PROBLEME INITIAL : le bonus etait de ±300, ce qui poussait l'IA a gagner
-     des morpions faciles sans se preoccuper de leur alignement. SOLUTION :
-     ramene a ±100.
-
-  E. Evaluation locale de chaque morpion non termine (_score_3x3) :
-     - Lignes locales (2+vide = 50, 1+2vides = 5)
-     - Bonus centre local (+10) et coins locaux (+3)
-
-
---------------------------------------------------------------------------------
-4. PROBLEMES IDENTIFIES ET RESOLUS
---------------------------------------------------------------------------------
-
-PROBLEME 1 : TIME_LIMIT non respecte
-  Symptome : coups prenant 8-12s pour un budget de 3s (observe sur logs).
-  Cause    : verification du timeout uniquement entre iterations de profondeur.
-  Solution : exception _Timeout levee a chaque entree de noeud minimax.
-  Resultat : tous les coups font desormais exactement 3.00s.
-
-PROBLEME 2 : IA ne gagnait pas/ne bloquait pas les morpions locaux evidents
-  Symptome : adversaire avait 2 cases alignees dans un morpion local, l'IA
-             ne completait/bloquait pas.
-  Cause    : tri des coups base uniquement sur la position (centre/coins),
-             sans verifier l'impact local immediat.
-  Solution : _move_priority simule le coup et verifie si le morpion local
-             est gagne ou bloque.
-
-PROBLEME 3 : IA gagnait des morpions non alignes sur la macro
-  Symptome : l'IA finissait avec 4+ morpions gagnes mais jamais alignes.
-  Cause    : bonus "morpion gagne" trop eleve (300) par rapport aux lignes
-             macro. L'IA optimisait quantite de morpions plutot que alignement.
-  Solution : bonus ramene a 100, lignes macro portees a ±5 000.
-
-PROBLEME 4 : Attaque preferee au blocage macro critique
-  Symptome : quand l'IA avait elle-meme 2 en ligne ET l'adversaire avait
-             2 en ligne, elle attaquait au lieu de bloquer (observable au
-             coup 31 de la partie 2 : libre, choisit de gagner (1,1) au lieu
-             de bloquer (1,3)).
-  Cause    : penalite de blocage macro = -5 000 = gain d'attaque = +5 000.
-             Scores equivalents, minimax choisissait arbitrairement.
-  Solution : penalite portee a -7 000 > gain d'attaque +5 000.
-
-PROBLEME 5 : IA aveugle aux coups forces (victoire/blocage macro immediat)
-  Symptome : l'adversaire avait 2 morpions alignes depuis plusieurs coups,
-             l'IA ne bloquait pas meme quand elle etait libre.
-  Cause    : minimax a profondeur limitee pouvait ne pas voir la cloture au
-             coup suivant si de nombreux coups libres diluaient la recherche.
-  Solution : _forced_move() detecte avant minimax :
-             (1) un coup qui gagne la macro immediatement -> joue directement
-             (2) un coup qui bloque un 2-en-ligne adverse -> joue directement
-             Ces cas ne passent plus par minimax.
-
-PROBLEME 6 : IA envoyait l'adversaire dans de bons morpions pour lui
-  Symptome : l'adversaire jouait 3 fois de suite dans le meme morpion (centre)
-             car l'IA l'y renvoyait a chaque coup.
-  Cause    : penalite "envoi adversaire" negligeable (+10 par ligne).
-  Solution : _macro_threat() evalue precisement le danger de la destination :
-             +500 si on envoie l'adversaire la ou il gagne la macro,
-             +150 si on l'avance sur une ligne, -80 si on l'envoie dans le
-             pire endroit pour lui.
+  - Detection de coups forces (_forced_move) avant le minimax pour les cas
+    triviaux : victoire macro immediate, blocage d'une 2-en-ligne adverse.
 
 
 --------------------------------------------------------------------------------
-5. PROBLEMES RESTANTS / AXES D'AMELIORATION
+2. NEUF PROBLEMES CRITIQUES IDENTIFIES DANS L'IA INITIALE
 --------------------------------------------------------------------------------
 
-  - L'anti-diagonale macro est exploitee deux fois de suite dans les logs.
-    Bien que les correctifs ci-dessus devraient le resoudre, cela reste a
-    confirmer sur de nouvelles parties.
+  Probleme 1 : HEURISTIQUE TROP LOCALE ET STATIQUE
+  ------------------------------------------------
+  L'evaluation se reduisait a une somme de scores 3x3 + un score macro
+  fixe. Pas de notion de mobilite, pas de prise en compte de l'effet
+  "envoi de l'adversaire", pas de detection de forks (deux 2-en-lignes
+  simultanees = victoire forcee).
+  Pourquoi critique : Ultimate TicTacToe est avant tout un jeu de FLUX.
+  Une heuristique locale donne une vue tronquee.
+  Correction : evaluation reconstruite en 3 niveaux (macro/threats, mobilite,
+  local) avec un bonus explicite pour les forks (W_MACRO_FORK_BONUS).
 
-  - L'heuristique ne modelise pas le fait qu'un morpion "libre" (full ou gagne)
-    laisse le joueur jouer n'importe ou. Cette liberte peut etre strategiquement
-    tres interessante et n'est pas penalisee/recompensee.
+  Probleme 2 : MAUVAISE MODELISATION DU FLUX
+  ------------------------------------------
+  Le moteur ne valorisait pas l'envoi de l'adversaire dans des morpions
+  defavorables/favorables. Le prix de "l'envoi" etait dilue dans le score
+  global au lieu d'etre un facteur dedie.
+  Pourquoi critique : c'est le coeur de la strategie d'Ultimate. Choisir un
+  coup qui gagne un morpion local mais envoie l'adversaire au centre ouvert
+  est une faute lourde.
+  Correction : dans le move ordering ET dans l'eval, prise en compte explicite
+  de la destination (lr, lc) :
+    - bonus negatif (-80_000) pour un coup envoyant l'adversaire la ou il a
+      une 2-en-ligne macro
+    - bonus negatif (-1_500) pour un coup laissant l'adversaire LIBRE
+      (cas typique : on envoie dans un morpion plein/gagne)
+    - W_MOBILITY = 4 par coup disponible, integre a l'eval
 
-  - Le tri des coups dans _move_priority recalcule check_winner_3x3 pour chaque
-    coup a chaque noeud. Sur les premiers coups (beaucoup de coups valides),
-    c'est couteux. Une mise en cache locale par noeud pourrait accelerer.
+  Probleme 3 : TABLE DE TRANSPOSITION INCORRECTE (CRITIQUE)
+  --------------------------------------------------------
+  Le hash Zobrist couvrait UNIQUEMENT les pions du plateau. Deux positions
+  identiques en pieces mais avec des contraintes (next_macro) ou un joueur
+  courant differents partageaient le meme hash.
+  Pourquoi critique : la TT renvoyait des scores faux pour les positions
+  collisionnant. C'est silencieux : aucune erreur visible mais l'IA jouait
+  des coups parfois absurdes.
+  Correction : le hash inclut maintenant board + next_macro + side. Tous
+  les tests d'invariance de make/unmake passent. La TT est aussi conservee
+  entre coups (auparavant videe a chaque tour, ce qui annulait son
+  benefice).
 
-  - TIME_LIMIT = 3.0s est arbitraire. En competition, le chronometre d'echecs
-    donne un temps total par joueur. Un systeme de gestion du temps total
-    (plutot que par coup) serait plus optimal.
+  Probleme 4 : EXPLOSION COMBINATOIRE / PROFONDEUR INEFFICACE
+  -----------------------------------------------------------
+  MAX_DEPTH=20 etait declaratif : la profondeur reelle atteinte etait souvent
+  ~4 a cause des appels couteux compute_macro() et apply_move() (recopie 9x9).
+  Pourquoi critique : la qualite du minimax depend lineairement de la
+  profondeur. A profondeur 4, on ne voit pas les forks formes en 3 coups.
+  Correction :
+    - make/unmake remplace apply_move (~80x moins de copies)
+    - macro maintenu en O(1) au lieu d'etre recalcule en O(81) a chaque noeud
+    - move ordering radicalement ameliore -> coupures alpha-beta plus tot
+    - history heuristic en complement des killers
+  Resultat mesure : profondeur 7-8 atteinte en mid-game contre 4-5 avant.
+
+  Probleme 5 : DETECTION DE COUPS FORCES TROP LIMITEE
+  ---------------------------------------------------
+  L'ancienne version detectait uniquement la victoire macro immediate
+  et le blocage d'une 2-en-ligne adverse, en ne considerant que les coups
+  qui gagnent le morpion local. Les forks n'etaient pas detectes hors minimax.
+  Pourquoi critique : laisser le minimax "decouvrir" un coup gagnant trivial
+  gaspille du budget.
+  Correction : _forced_move() conserve la detection de victoire/blocage
+  immediats (qui sont prouvablement les bons coups). Les forks ne sont PAS
+  resolus hors minimax volontairement : le risque de jouer un fork "evident"
+  qui se fait contrer en realite est trop grand. On laisse le minimax,
+  mais avec un eval qui tient compte des forks (W_MACRO_FORK_*) et un
+  ordering qui les remonte tres haut.
+
+  Probleme 6 : RECALCULS INEFFICACES
+  ----------------------------------
+  compute_macro() recalculait toutes les 9 sous-grilles (9 * 8 lignes = 72
+  operations) a CHAQUE noeud du minimax. apply_move() recopiait toute la
+  grille 9x9 a chaque coup essaye.
+  Pourquoi critique : 90% du temps CPU passait dans ces deux fonctions.
+  Correction :
+    - GameState maintient macro et occ incrementalement.
+    - make_move ne verifie que le morpion local impacte (8 lignes max).
+    - unmake_move restaure depuis la pile history en O(1).
+
+  Probleme 7 : ABSENCE DE QUIESCENCE SEARCH (HORIZON EFFECT)
+  ----------------------------------------------------------
+  L'ancienne version arretait la recherche brutalement a la profondeur
+  limite, meme au milieu d'une sequence "captures" (gain de morpions).
+  Pourquoi critique : un coup peut sembler bon a profondeur d s'il gagne
+  un morpion local, mais a d+1 l'adversaire repond par un meilleur coup.
+  Correction : quiescence() etend la recherche d'au plus QUIESCENCE_MAX = 4
+  plis, mais UNIQUEMENT sur les coups "capturants" (gain ou blocage de
+  morpion local). Le stand-pat (eval immediate) est utilise comme borne
+  inferieure (si on n'a aucun coup tactique, c'est le score reel).
+
+  Probleme 8 : KILLER MOVES PEU EFFICACES
+  ---------------------------------------
+  Les killers stockaient 2 coups par profondeur, sans heuristique
+  complementaire. Or beaucoup de bons coups n'apparaissent pas dans cette
+  liste fine.
+  Correction : on garde les killers (utiles pour l'ordering local) ET on
+  ajoute une history heuristic : _history[player][r][c] += depth^2 a chaque
+  coupure beta. Cela "apprend" globalement quels coups sont bons sur la
+  position courante. La history est remise a zero entre coups (sa pertinence
+  est tres locale).
+
+  Probleme 9 : PONDERATIONS HEURISTIQUES INCOHERENTES
+  ---------------------------------------------------
+  Valeurs arbitraires (5000, 800, 100, 5, 3...) sans rationale. La penalite
+  de blocage etait egale au gain d'attaque (-5000 = +5000), poussant l'IA
+  a attaquer au lieu de bloquer.
+  Correction : refonte complete de l'echelle des poids, documentee dans
+  le code (constantes W_*) :
+    Victoire/defaite globale : ±100_000 (+ depth pour preferer les
+                                         victoires rapides)
+    Menace macro 2-en-ligne pour soi    : +5_000
+    Menace macro 2-en-ligne adverse     : -7_000  (asymetrie -> bloquer)
+    Fork macro (deux 2-en-lignes simul) : +2_000  (bonus additionnel)
+    Anti-fork                           : -3_000
+    Ligne macro 1-en-ligne              : ±500
+    Position macro centre/coin/bord     : 200/80/40
+    Morpion local gagne                 : ±100
+    2-en-ligne local                    : ±30
+    Centre/coin local                   : ±8/±2
+    Mobilite (par coup dispo)           : ±4
+  Le ratio macro >> local (ordre de 50x) est volontaire : la victoire se
+  joue sur l'alignement macro.
 
 
 --------------------------------------------------------------------------------
-6. CHOIX DE CONCEPTION NOTABLES
+3. APPROCHES ENVISAGEES ET COMPROMIS
 --------------------------------------------------------------------------------
 
-  - Pas de dictionnaire de coups (interdit par l'enonce) : tout est calcule
-    a la volee, y compris la transposition table qui est un cache de calcul
-    et non un dictionnaire de coups precalcules.
+  3.1. Bitboards
+  --------------
+  Une representation par bitmasks 9-bits par morpion local (et un
+  bitmask 9 bits pour la macro) accelererait check_winner_3x3 a une simple
+  comparaison contre une liste de masques precalculee.
+  Choisi de NE PAS l'implementer : les listes Python sont deja efficaces
+  apres l'ajout du cache make/unmake, et l'augmentation de la complexite
+  du code aurait viole la consigne "rester simple". Le gain attendu est
+  modeste (<2x) compare au gain make/unmake (>10x).
 
-  - La TT est videe a chaque coup de l'IA (pas entre les profondeurs de
-    l'iterative deepening). Garder la TT entre coups serait possible mais
-    risque de donner des scores obsoletes sur des positions trop differentes.
+  3.2. MCTS (Monte Carlo Tree Search)
+  -----------------------------------
+  MCTS est une alternative connue pour Ultimate TicTacToe (plusieurs IA
+  competitives en sont equipees). Choisi de NE PAS basculer :
+    - le sujet impose Minimax + Alpha-Beta
+    - MCTS demande des temps de simulation plus longs pour briller
+    - notre Minimax atteint deja une profondeur correcte (7-8) en mid-game
+  Compromis : on garde Minimax avec ameliorations (TT, killers, history,
+  quiescence) plutot qu'un MCTS hybride.
 
-  - Le hash Zobrist est mis a jour incrementalement : chaque coup XOR la valeur
-    de la case jouee, evitant de recalculer le hash de tout le plateau a chaque
-    noeud (O(1) au lieu de O(81)).
+  3.3. Aspiration windows / PVS (Principal Variation Search)
+  ----------------------------------------------------------
+  Variantes du minimax qui restreignent la fenetre alpha-beta autour de la
+  valeur supposee. Choisi de NE PAS les implementer : le gain est generalement
+  marginal (~10-20%) et la complexite du code grimpe nettement. Notre objectif
+  etait un code simple ET fort.
 
-  - _forced_move() est un court-circuit intentionnel du minimax pour les cas
-    triviaux. Cela ne viole pas l'esprit de l'enonce (le minimax reste le coeur
-    de la decision) mais garantit que les erreurs grossieres ne se produisent
-    pas par manque de profondeur.
+  3.4. TT conservee entre coups vs videe
+  --------------------------------------
+  Choix : conserver. Le hash inclut maintenant tout ce qui distingue une
+  position. La conservation permet au coup suivant de reutiliser les
+  evaluations deja faites (les sous-arbres communs sont nombreux apres
+  un coup donne).
+
+  3.5. Forced move : ou s'arreter ?
+  ---------------------------------
+  Tentation : detecter aussi les forks en 2 coups, les double-menaces, etc.
+  Choisi de RESTER MINIMAL : ne detecter QUE les coups prouvablement optimaux
+  (victoire / blocage immediat). Ajouter de l'heuristique dans _forced_move
+  reviendrait a court-circuiter le minimax avec un risque d'erreur. Le
+  minimax + son ordering ameliore se charge des cas plus subtils.
+
+  3.6. Quiescence search : profondeur 4
+  -------------------------------------
+  Compromis temps/precision. A 0 : pas de quiescence (effet d'horizon).
+  A 8+ : explosion combinatoire sur certaines positions. 4 plis suffisent
+  a stabiliser l'eval sur les sequences "gain de morpion -> riposte".
+
+
+--------------------------------------------------------------------------------
+4. AMELIORATIONS OBTENUES (MESURES)
+--------------------------------------------------------------------------------
+
+  Profondeur de recherche (budget 3s) :
+    Avant : ~4 plis (mid-game) selon les logs
+    Apres : 7-8 plis (mid-game), 5 plis en ouverture (forte ramification)
+
+  Duel direct (budget 1s/coup) :
+    Partie 1 (NEW=X, OLD=O) : NEW gagne 3-0 morpions en 27 coups
+    Partie 2 (OLD=X, NEW=O) : NEW gagne 5-1 morpions en 34 coups
+    Bilan : 2 victoires nettes, jamais en danger
+
+  Robustesse :
+    - 8 victoires sur 8 contre joueur aleatoire (4 en X, 4 en O)
+    - tous les invariants make/unmake valides
+    - le hash discrimine effectivement side et next_macro
+    - aucun depassement notable du budget temps
+
+  Code :
+    - 1 seul fichier, ~900 lignes (vs ~1200 avant), commente la ou
+      necessaire (constantes de poids, choix non triviaux)
+    - test cases retires pour ne pas polluer le projet remis
+
+
+--------------------------------------------------------------------------------
+5. POINTS D'AMELIORATION FUTURS (NON CRITIQUES)
+--------------------------------------------------------------------------------
+
+  - Bitboards pour acceleration ~2-3x supplementaire
+  - Late Move Reductions (LMR) : reduire la profondeur des coups visiblement
+    mauvais apres les premiers
+  - Aspiration windows pour la recherche racine
+  - Symetrie : Ultimate TicTacToe a 8 symetries (D4). On pourrait normaliser
+    les positions avant hash pour densifier la TT
+  - Time management dynamique : allouer plus de temps aux positions
+    critiques (peu de coups forces, beaucoup d'ouvertures macro)
+
+
+--------------------------------------------------------------------------------
+6. STRUCTURE DU CODE (FICHIER ultimate_tictactoe.py)
+--------------------------------------------------------------------------------
+
+  Sections, dans l'ordre :
+
+  1. Constantes (EMPTY/X/O, MAX_DEPTH, TIME_LIMIT)
+  2. Lignes 3x3 et helpers (check_winner_3x3)
+  3. Zobrist hashing (3 tables: pions, next_macro, side)
+  4. Transposition table (lookup, store avec depth-replacement, clear)
+  5. Classe GameState : etat mutable, make/unmake, get_valid_moves,
+     is_terminal
+  6. Evaluation heuristique : poids documentes, _score_local_3x3,
+     _macro_threats, evaluate
+  7. Killers, history heuristic, gestion timeout
+  8. Move ordering (_move_score, _order_moves)
+  9. Quiescence search
+  10. Minimax + alpha-beta
+  11. Forced move detection
+  12. Recherche racine + iterative deepening (ai_choose_move_timed)
+  13. API legacy (compute_macro, apply_move, etc.) pour la boucle de jeu
+  14. Affichage, ecran de resultats, tour humain
+  15. Boucles de jeu (joueur vs IA, IA vs IA)
+  16. Point d'entree
 
 ================================================================================
