@@ -48,7 +48,7 @@ O = 2
 SYMBOL = {EMPTY: '.', X: 'X', O: 'O'}
 
 MAX_DEPTH  = 20
-TIME_LIMIT = 5.0   # budget par coup
+TIME_LIMIT = 6.0   # budget par coup
 QUIESCENCE_MAX = 2
 
 # Log optionnel des coups dans game_log.txt.
