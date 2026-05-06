@@ -48,7 +48,7 @@ O = 2
 SYMBOL = {EMPTY: '.', X: 'X', O: 'O'}
 
 MAX_DEPTH  = 20
-TIME_LIMIT = 3.0   # budget par coup
+TIME_LIMIT = 5.0   # budget par coup
 QUIESCENCE_MAX = 2
 
 # Log optionnel des coups dans game_log.txt.
@@ -133,6 +133,7 @@ def is_local_available(board, macro, mr, mc):
 
 def get_valid_moves(board, next_macro, macro=None):
     """Retourne les coups valides (row, col) en index 0-base."""
+    "next_macro : (mr, mc) ou None si libre. macro : etat 3x3 des morpions locaux (optionnel, pour eviter de le recalculer)."
     if macro is None:
         macro = compute_macro(board)
 
@@ -160,7 +161,9 @@ def get_valid_moves(board, next_macro, macro=None):
 
 
 def apply_move(board, row, col, player):
-    """Retourne un nouveau plateau apres le coup."""
+    """Retourne un nouveau plateau apres le coup.
+    Copie utile car dans implémentation min max on test sans modifier l'état courant
+    """
     new_board = [r[:] for r in board]
     new_board[row][col] = player
     return new_board
@@ -180,7 +183,7 @@ def next_macro_constraint(row, col, board, macro):
 
 random.seed(42)
 # ZOBRIST[player][row][col] : valeur aleatoire 64 bits
-ZOBRIST = [[[random.getrandbits(64) for _ in range(9)] for _ in range(9)] for _ in range(3)]
+ZOBRIST = [[[random.getrandbits(64) for _ in range(9)] for _ in range(9)] for _ in range(3)] #range 3 car 3 possibilitées (EMPTY, X, O)
 # Hash pour chaque contrainte next_macro possible : 9 morpions + "libre"
 ZOBRIST_NEXT = [random.getrandbits(64) for _ in range(10)]  # 0..8 + 9=libre
 # Hash pour le joueur courant (XOR si c'est au tour de O)
@@ -211,7 +214,7 @@ def tt_store(h, depth, score, flag, best_move):
     """Stocke une entree avec strategie de remplacement par profondeur."""
     existing = _tt.get(h)
     if existing is not None and existing[0] > depth:
-        return  # entree existante plus profonde -> on garde
+        return  # entree existante plus profonde -> on garde car plus profonde -> plus précise
     if len(_tt) >= TT_MAX_SIZE and existing is None:
         # Cache plein : on n'ajoute plus de nouvelles entrees
         # (les entrees existantes peuvent encore etre mises a jour)
@@ -293,14 +296,15 @@ class GameState:
         return self.macro[mr][mc] == EMPTY and self.occ[mr][mc] < 9
 
     def _check_local_winner(self, mr, mc):
-        """Verifie le gagnant d'un morpion local en lisant directement board."""
+        """Verifie le gagnant d'un morpion local en lisant directement board.
+        NOTE : on aurait pu optimiser mais pas vraiment utile"""
         b = self.board
         r0, c0 = mr*3, mc*3
         for line in LINES_3x3:
-            a = b[r0+line[0][0]][c0+line[0][1]]
+            a = b[r0+line[0][0]][c0+line[0][1]] #position de la premiere case de la ligne dans le board global
             if a == EMPTY:
                 continue
-            if a == b[r0+line[1][0]][c0+line[1][1]] == b[r0+line[2][0]][c0+line[2][1]]:
+            if a == b[r0+line[1][0]][c0+line[1][1]] == b[r0+line[2][0]][c0+line[2][1]]: #regarde si les 3 cases ont la meme value
                 return a
         return EMPTY
 
@@ -320,7 +324,7 @@ class GameState:
         # libre
         for mr in range(3):
             for mc in range(3):
-                if not self.is_local_available(mr, mc):
+                if not self.is_local_available(mr, mc): #si le morpion local n'est pas disponible, on continue
                     continue
                 r0, c0 = mr*3, mc*3
                 for r in range(3):
@@ -334,7 +338,7 @@ class GameState:
         w = check_winner_3x3(self.macro)
         if w != EMPTY:
             return True, w
-        # Reste-t-il un coup possible ?
+        # Reste-t-il un coup possible
         for mr in range(3):
             for mc in range(3):
                 if self.is_local_available(mr, mc):
@@ -452,17 +456,30 @@ W_BAD_SEND      = -150 # envoyer dans morpion ouvrant lignes adverses
 
 
 def _score_local_3x3(board, mr, mc, player, opp):       
-    """Score local d'un morpion non termine, pour le perspective de player."""
+    """
+    Evalue un petit morpion non termine.
+    La fonction parcourt les alignements possibles et ajoute/retire au score
+    les poids definis plus haut selon le nombre de pions alignes.
+    """
+    # Passage des coordonnees du morpion local aux coordonnees du plateau 9x9.
     r0, c0 = mr*3, mc*3
     score = 0
+
+    # Analyse des 8 possibilites d'alignement : lignes, colonnes, diagonales.
     for line in LINES_3x3:
         a = board[r0+line[0][0]][c0+line[0][1]]
         b = board[r0+line[1][0]][c0+line[1][1]]
         c = board[r0+line[2][0]][c0+line[2][1]]
+
+        # Nombre de pions de chaque joueur sur cet alignement.
         p = (a == player) + (b == player) + (c == player)
         o = (a == opp) + (b == opp) + (c == opp)
+
+        # Alignement bloque : aucune ponderation.
         if p > 0 and o > 0:
             continue
+
+        # Plus il y a de pions alignes, plus la ponderation absolue est forte.
         if p == 2:
             score += W_LOCAL_LINE_2
         elif p == 1:
@@ -471,13 +488,14 @@ def _score_local_3x3(board, mr, mc, player, opp):
             score -= W_LOCAL_LINE_2
         elif o == 1:
             score -= W_LOCAL_LINE_1
-    # centre
+
+    # Bonus/malus de position : centre plus important que les coins.
     cv = board[r0+1][c0+1]
     if cv == player:
         score += W_LOCAL_CENTER
     elif cv == opp:
         score -= W_LOCAL_CENTER
-    # coins
+
     for r, c in ((0,0),(0,2),(2,0),(2,2)):
         v = board[r0+r][c0+c]
         if v == player:
@@ -492,6 +510,7 @@ def _macro_threats(macro, player, opp):
     Compte les menaces macro :
     Retourne (n_two_open_me, n_two_open_opp, line_score)
     line_score = somme des contributions de toutes les lignes macro.
+    Meme fonction que _score_local_3x3 (dans l'idée) mais poids diff et étudie les macro 
     """
     n_two_me = 0
     n_two_opp = 0
@@ -517,9 +536,14 @@ def _macro_threats(macro, player, opp):
     return n_two_me, n_two_opp, line_score
 
 
+"Fonction d'evaluation globale -> combinaison des heuristiques pour LE MINMAX"
 def _state_evaluate(state, ai_player):
     """
     Evalue l'etat pour ai_player. Score normalise (positif = favorable).
+      > _state_evaluate rassemble toutes les heuristiques : victoire globale, menaces sur la grande grille, petits
+    morpions gagnés, alignements locaux et mobilité. 
+    Donc elle renvoie un score positif si la position est bonne pour lIA, négatif si elle est meilleure pour l’adversaire.
+
     """
     macro = state.macro
     board = state.board
@@ -629,9 +653,21 @@ def history_clear():
 # ---------------------------------------------------------------------------
 
 def _move_score(state, move, player, tt_move, killers):
-    """Score d'ordre (plus haut = explore en premier)."""
+    """
+    Score d'ordre pour le tri des coups (plus haut = explore en premier).
+    Ce score ne remplace pas l'evaluation minimax : il sert seulement a
+    essayer d'abord les coups qui ont le plus de chances de provoquer une
+    coupure alpha-beta, donc a reduire le nombre de branches explorees.
+    """
+    # Priorite maximale : la table de transposition a deja vu cette position
+    # et propose ce coup comme meilleur candidat. Le retester en premier peut
+    # retrouver vite une bonne borne alpha/beta.
     if move == tt_move:
         return 1_000_000
+
+    # Deuxieme priorite : killer move de cette profondeur.
+    # Un killer n'est pas forcement "le meilleur coup" en general ; c'est un
+    # coup qui a deja coupe la recherche dans un contexte de profondeur similaire.
     if move in killers:
         return 500_000
 
@@ -641,7 +677,8 @@ def _move_score(state, move, player, tt_move, killers):
     opp = O if player == X else X
     s = 0
 
-    # Simulation locale rapide pour detecter gain/blocage local
+    # Simulation locale rapide pour detecter gain/blocage local sans appeler
+    # make_move/unmake_move : on modifie temporairement la case puis on l'annule.
     board = state.board
     r0, c0 = mr*3, mc*3
     # Verifie si poser ici gagne le morpion local
@@ -657,7 +694,8 @@ def _move_score(state, move, player, tt_move, killers):
 
     macro = state.macro
     if wins_local:
-        # Cherche l'impact macro : ce gain complete-t-il une ligne macro ?
+        # Cherche l'impact macro : gagner ce petit morpion peut-il completer
+        # une ligne sur la grande grille ?
         for li in _LINES_BY_CELL[mr][mc]:
             line = LINES_3x3[li]
             a = macro[line[0][0]][line[0][1]]
@@ -673,7 +711,7 @@ def _move_score(state, move, player, tt_move, killers):
             elif cnt_me == 1:
                 s += 8_000
 
-        # Si ce coup bloque aussi une 2-en-ligne adverse :
+        # Si ce gain local bloque aussi une menace macro adverse, on le valorise.
         for li in _LINES_BY_CELL[mr][mc]:
             line = LINES_3x3[li]
             a = macro[line[0][0]][line[0][1]]
@@ -725,7 +763,8 @@ def _move_score(state, move, player, tt_move, killers):
         # On laisse l'adversaire libre : tres mauvais en general
         s -= 1_500
 
-    # History heuristic
+    # History heuristic : bonus appris pendant la recherche pour les coups qui
+    # ont souvent provoque des coupures, toutes profondeurs confondues.
     s += _history[player][r][c]
 
     # Position locale (centre > coin > bord)
@@ -847,52 +886,83 @@ def _state_minimax(state, depth, alpha, beta, ai_player):
     """
     Minimax avec alpha-beta sur l'etat mutable (make/unmake).
     Retourne le score pour ai_player.
+
+    depth = nombre de demi-coups restants a explorer normalement.
+    alpha = meilleur score deja garanti par le joueur maximisant.
+    beta  = meilleur score deja garanti par le joueur minimisant.
+    Si alpha >= beta, la branche ne peut plus changer la decision finale :
+    on peut donc couper la recherche.
     """
+    # La recherche iterative donne un temps limite a respecter. Si on depasse
+    # ce temps, on interrompt proprement pour rendre le meilleur coup deja trouve.
     if time.time() >= _deadline:
         raise _Timeout()
 
-    # Terminal ?
+    # Cas terminal : la partie est deja finie, donc on n'a pas besoin
+    # d'heuristique. On renvoie directement une valeur tres forte.
     done, winner = state.is_terminal()
     if done:
         if winner == ai_player:
+            # Le +depth favorise les victoires rapides : a score gagnant egal,
+            # gagner plus tot laisse plus de profondeur restante.
             return 100_000 + depth   # preferer les victoires rapides
         if winner == 0:
             return 0
+        # Le -depth penalise les defaites rapides : l'IA prefere retarder une
+        # defaite si aucune branche ne permet de l'eviter.
         return -100_000 - depth
 
-    # TT lookup
+    # Table de transposition : si cette position a deja ete analysee avec une
+    # profondeur suffisante, on peut reutiliser son score ou sa borne.
     h = state.hash
     tt_entry = _tt.get(h)
     tt_move = None
     if tt_entry is not None:
         tt_depth, tt_score, tt_flag, tt_move = tt_entry
         if tt_depth >= depth:
+            # Score exact : la position a deja ete resolue pour cette profondeur.
             if tt_flag == TT_EXACT:
                 return tt_score
+            # Borne basse : le vrai score est au moins tt_score. Si cela suffit
+            # deja a depasser beta, cette branche sera coupee.
             if tt_flag == TT_LOWER and tt_score >= beta:
                 return tt_score
+            # Borne haute : le vrai score est au plus tt_score. Si cela suffit
+            # deja a passer sous alpha, cette branche sera coupee.
             if tt_flag == TT_UPPER and tt_score <= alpha:
                 return tt_score
 
+    # Profondeur normale epuisee : au lieu d'evaluer brutalement, on lance la
+    # quiescence pour verifier encore les coups tactiques immediats.
     if depth == 0:
         return quiescence(state, alpha, beta, ai_player, QUIESCENCE_MAX)
 
+    # Generation des coups legaux pour l'etat courant.
     moves = state.get_valid_moves()
     if not moves:
+        # Securite : si aucun coup n'est jouable mais que is_terminal ne l'a pas
+        # traite, on renvoie l'evaluation heuristique de la position.
         return _state_evaluate(state, ai_player)
 
     side = state.side
     maximizing = (side == ai_player)
 
+    # On trie les coups avant de les explorer. Cela ne change pas le resultat
+    # du minimax, mais augmente les chances de couper tot avec alpha-beta.
     moves = _order_moves(state, moves, side, tt_move, depth)
 
+    # On garde les bornes d'origine pour savoir quel type d'information stocker
+    # ensuite dans la table de transposition : score exact, borne basse ou haute.
     orig_alpha = alpha
     orig_beta = beta
     best_move = moves[0]
 
     if maximizing:
+        # Tour de l'IA : elle cherche le score le plus grand possible.
         best = -math.inf
         for move in moves:
+            # make_move/unmake_move permet de tester un coup sans recopier tout
+            # l'etat, ce qui rend la recherche beaucoup plus rapide.
             state.make_move(*move)
             val = _state_minimax(state, depth - 1, alpha, beta, ai_player)
             state.unmake_move()
@@ -902,10 +972,13 @@ def _state_minimax(state, depth, alpha, beta, ai_player):
             if val > alpha:
                 alpha = val
             if alpha >= beta:
+                # Coupure beta : le minimiseur evitera cette branche, donc il
+                # est inutile de tester les autres coups freres.
                 _add_killer(depth, move)
                 _add_history(side, move, depth)
                 break
     else:
+        # Tour de l'adversaire : il cherche le score le plus petit pour l'IA.
         best = math.inf
         for move in moves:
             state.make_move(*move)
@@ -917,11 +990,16 @@ def _state_minimax(state, depth, alpha, beta, ai_player):
             if val < beta:
                 beta = val
             if alpha >= beta:
+                # Coupure alpha : le maximiseur a deja une meilleure option
+                # ailleurs, donc cette branche ne sera pas choisie.
                 _add_killer(depth, move)
                 _add_history(side, move, depth)
                 break
 
-    # TT store
+    # Stockage dans la table de transposition.
+    # - TT_UPPER : le score exact est <= best
+    # - TT_LOWER : le score exact est >= best
+    # - TT_EXACT : best est le vrai score minimax pour cette profondeur
     if best <= orig_alpha:
         flag = TT_UPPER
     elif best >= orig_beta:
@@ -948,6 +1026,9 @@ def _state_forced_move(state, player):
     pour ne pas occulter des coups plus subtils. Le forced_move est un filet
     de securite contre les erreurs grossieres.
     """
+    # Cette fonction est appelee avant la recherche minimax complete.
+    # Elle ne cherche pas "le meilleur coup strategique" : elle repere seulement
+    # les urgences simples qu'il faut jouer tout de suite.
     moves = state.get_valid_moves()
     if not moves:
         return None
@@ -955,14 +1036,19 @@ def _state_forced_move(state, player):
     macro = state.macro
     board = state.board
 
+    # Si aucun coup gagnant immediat n'existe, on garde eventuellement un coup
+    # qui bloque une menace macro adverse directe.
     block_candidate = None
 
+    # 1) Priorite absolue : existe-t-il un coup qui gagne la grande grille ?
+    # Pour gagner la macro, il faut d'abord que le coup gagne son petit morpion.
     for move in moves:
         r, c = move
         mr, mc = r // 3, c // 3
         lr, lc = r % 3, c % 3
 
-        # Le coup doit gagner le morpion local pour avoir un impact macro
+        # Simulation locale minimale : on pose temporairement le coup pour voir
+        # s'il transforme le petit morpion (mr, mc) en morpion gagne par player.
         board[r][c] = player
         wins_local = (state._check_local_winner(mr, mc) == player)
         board[r][c] = EMPTY
@@ -970,7 +1056,8 @@ def _state_forced_move(state, player):
         if not wins_local:
             continue
 
-        # Simule la macro mise a jour
+        # Le coup gagne le local. On simule maintenant son effet sur la macro :
+        # la case macro (mr, mc) serait consideree comme gagnee par player.
         for li in _LINES_BY_CELL[mr][mc]:
             line = LINES_3x3[li]
             (r1, c1), (r2, c2), (r3, c3) = line
@@ -984,18 +1071,22 @@ def _state_forced_move(state, player):
                 # peu importe ici, c'est une victoire macro IMMEDIATE pour nous
                 return move
 
-    # Detection de blocage critique : adversaire a 2-en-ligne avec une 3eme
-    # case dont le morpion peut etre gagne par lui au prochain coup.
-    # Un coup qui empeche cela passe par : gagner ce 3eme morpion pour soi.
+    # 2) Si on ne peut pas gagner immediatement, on cherche un blocage critique.
+    # Situation visee : l'adversaire possede deja 2 cases sur une ligne macro,
+    # et la 3eme case de cette ligne est encore prenable. Si notre coup gagne
+    # cette 3eme case pour nous, il empeche cette victoire macro adverse.
     for move in moves:
         r, c = move
         mr, mc = r // 3, c // 3
+        # Meme idee que plus haut : un coup ne bloque une ligne macro que s'il
+        # gagne vraiment le petit morpion correspondant.
         board[r][c] = player
         wins_local = (state._check_local_winner(mr, mc) == player)
         board[r][c] = EMPTY
         if not wins_local:
             continue
-        # Ce coup gagne le local : verifie si bloque une 2-en-ligne adverse
+        # Ce coup gagne le local : on verifie si cette case macro etait la case
+        # manquante d'une ligne ou l'adversaire avait deja deux morpions.
         for li in _LINES_BY_CELL[mr][mc]:
             line = LINES_3x3[li]
             cnt_op = sum(1 for (rr, cc) in line if macro[rr][cc] == opp)
@@ -1003,9 +1094,14 @@ def _state_forced_move(state, player):
             if cnt_me > 0:
                 continue
             if cnt_op == 2:
+                # On ne retourne pas immediatement pour garder le meme style que
+                # la fonction actuelle : premier candidat memorise, puis retour
+                # apres avoir fini le parcours.
                 if block_candidate is None:
                     block_candidate = move
 
+    # None signifie : pas de victoire macro immediate, pas de blocage macro
+    # direct evident. Le minimax devra alors choisir normalement.
     return block_candidate
 
 
@@ -1086,7 +1182,7 @@ def ai_choose_move_timed(board, next_macro, ai_player, time_limit=TIME_LIMIT):
 
 
 # ---------------------------------------------------------------------------
-# Affichage (inchange)
+# Affichage
 # ---------------------------------------------------------------------------
 
 def _cell_str(board, macro, row, col, last_move):
@@ -1106,24 +1202,29 @@ def display_board(board, next_macro=None, last_move=None):
     os.system('cls' if os.name == 'nt' else 'clear')
     macro = compute_macro(board)
 
+    row_prefix = "      "
+    board_border = row_prefix + "+---------+---------+---------+"
+    header_groups = ["".join(f"{n:^3}" for n in range(start, start + 3))
+                     for start in (1, 4, 7)]
+
     print()
     print("  ========================================")
     print("      ULTIMATE TIC-TAC-TOE")
     print("  ========================================")
     print()
 
-    print("             1   2   3     4   5   6     7   8   9")
-    print("          +-----------+-----------+-----------+")
+    print(row_prefix + " " + " ".join(header_groups))
+    print(board_border)
     for row in range(9):
         if row > 0 and row % 3 == 0:
-            print("          +-----------+-----------+-----------+")
-        line = f"  ligne {row+1:2} |"
+            print(board_border)
+        line = f" L{row+1:>2} |"
         for col in range(9):
             line += _cell_str(board, macro, row, col, last_move)
             if col % 3 == 2:
                 line += "|"
         print(line)
-    print("          +-----------+-----------+-----------+")
+    print(board_border)
     print()
     print("  Vue macro  (X/O = gagne, = = plein, . = en cours, * = actif)")
     print()
