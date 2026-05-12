@@ -47,7 +47,7 @@ O = 2
 
 SYMBOL = {EMPTY: '.', X: 'X', O: 'O'}
 
-MAX_DEPTH  = 20
+MAX_DEPTH  = 40
 TIME_LIMIT = 6.0   # budget par coup
 QUIESCENCE_MAX = 2
 
